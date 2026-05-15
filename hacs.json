@@ -1,6 +1,6 @@
 {
   "name": "Koolnova",
-  "homeassistant": "2025.12.0",
+  "homeassistant": "2024.12.0",
   "render_readme": true,
   "render_changelog": true,
   "country": [
@@ -11,7 +11,7 @@
   "config_flow": true,
   "iot_class": "cloud_polling",
   "categories": [
-    "HVAC"
+    "integration"
   ],
   "hide_default_branch": false
 }

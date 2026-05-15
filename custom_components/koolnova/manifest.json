@@ -4,6 +4,7 @@
   "codeowners": ["@luisgsluis"],
   "config_flow": true,
   "dependencies": [],
+  "requirements": ["requests", "python-dateutil"],
   "documentation": "https://github.com/luisgsluis/homeassistant-koolnova",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
