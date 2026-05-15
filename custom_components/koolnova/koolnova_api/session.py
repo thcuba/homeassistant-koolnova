@@ -34,8 +34,8 @@ class KoolnovaClientSession(Session):
         """Initialize and authenticate.
 
         Args:
-            username: the Koolnova registered user
-            password: the Koolnova user's password
+            username: the flipr registered user
+            password: the flipr user's password
         """
         Session.__init__(self)
         _LOGGER.debug("Starting authentication for username '%s' (email: %s)", username, email)

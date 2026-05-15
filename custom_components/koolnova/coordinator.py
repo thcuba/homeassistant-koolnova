@@ -24,7 +24,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry):
         """Initialize coordinator."""
-        # Get configured update interval
+        # Obtener intervalo de actualizacion configurado
         config_data = config_entry.data
         options_data = config_entry.options
         
@@ -127,7 +127,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     self._project_update_counter = 0  # Reset counter
                     result = await self.hass.async_add_executor_job(self._fetch_data)
                     
-                    # Fire event after full update
+                    # Disparar evento después de actualización completa
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "full",
                         "success": True,
@@ -145,7 +145,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                                 self._project_update_counter, self._project_update_frequency)
                     result = await self.hass.async_add_executor_job(self._fetch_sensors_only)
                     
-                    # Fire event after partial update (sensors only)
+                    # Disparar evento después de actualización parcial (solo sensores)
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "sensors_only",
                         "success": True,
@@ -162,7 +162,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 self._project_update_counter = 0
                 result = await self.hass.async_add_executor_job(self._fetch_data)
                 
-                # Fire event after initial setup
+                # Disparar evento después de setup inicial
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "initial",
                     "success": True,
@@ -183,7 +183,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 if self.data and (self.data.get("projects") or self.data.get("sensors")):
                     _LOGGER.info("Returning cached data due to authentication error")
                     
-                    # Fire error event with cached data
+                    # Disparar evento de error con datos cacheados
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "cached",
                         "success": False,
@@ -197,7 +197,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     # No cached data available, re-raise to trigger proper error handling
                     
-                    # Fire critical error event
+                    # Disparar evento de error crítico
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "failed",
                         "success": False,
@@ -210,7 +210,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 # Re-raise other errors
                 
-                # Fire generic error event
+                # Disparar evento de error genérico
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "failed",
                     "success": False,

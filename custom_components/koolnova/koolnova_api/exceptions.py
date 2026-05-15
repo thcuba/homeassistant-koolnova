@@ -1,10 +1,10 @@
-"""Exceptions for Koolnova."""
+"""Exceptions for Flipr."""
 
 from typing import Any
 
 
 class KoolnovaError(Exception):
-    """Error from Koolnova api."""
+    """Error from Flipr api."""
 
     def __init__(self, *args: Any) -> None:
         """Initialize the exception.
