@@ -63,9 +63,9 @@ class KoolnovaAPIRestClient:
 
         return self.session
 
-    
 
-   
+
+
 
     def get_project(self) -> Dict[str, Any]:
 
@@ -159,7 +159,7 @@ class KoolnovaAPIRestClient:
             })
 
         return rooms
-       
+
 
     def update_sensor(self, sensor_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -181,7 +181,7 @@ class KoolnovaAPIRestClient:
 
         _LOGGER.debug("Sensor %s updated successfully with payload %s: %s", sensor_id, payload, response.json())
         return response.json()
-    
+
     def search_all_ids(self) -> Dict[str, List[str]]:
         """Return all device ids grouped by type (koolnova / hub).
 
@@ -288,7 +288,7 @@ class KoolnovaAPIRestClient:
         response = self._get_session().rest_request("POST", path)
         # After changing state, return current state (tests will mock the GET)
         return self.get_hub_state(hub_id)
-   
+
     def update_project(self, topic_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update specific attributes for a project (topic).

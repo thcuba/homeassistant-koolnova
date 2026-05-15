@@ -25,7 +25,7 @@ DEFAULT_ZONE_HVAC_MODES = [HVACMode.OFF, HVACMode.AUTO]
 
 DEFAULT_MIN_TEMP = 21.0       # valor por defecto
 MIN_CONFIGURABLE_TEMP = 15.0  # minimo personalizable
-DEFAULT_MAX_TEMP = 27.0       # valor por defecto  
+DEFAULT_MAX_TEMP = 27.0       # valor por defecto
 MAX_CONFIGURABLE_TEMP = 35.0  # maximo personalizable
 DEFAULT_TEMP_PRECISION = 0.5
 
