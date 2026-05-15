@@ -56,7 +56,23 @@
         },
         "sensor": {
             "connectivity_status": {
-                "name": "Connectivity Status"
+                "name": "Connectivity Status",
+                "state": {
+                    "unknown": "Unknown",
+                    "online": "Online",
+                    "offline": "Offline"
+                },
+                "state_attributes": {
+                    "wifi_signal": {
+                        "name": "WiFi Signal"
+                    },
+                    "online": {
+                        "name": "Online"
+                    },
+                    "last_update": {
+                        "name": "Last Update"
+                    }
+                }
             }
         }
     }
