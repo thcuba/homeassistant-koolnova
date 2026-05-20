@@ -51,6 +51,6 @@ For developers and advanced users, see the detailed docs:
 
 ### Support
 
-- **Issues**: [GitHub Issues]((https://github.com/thcuba/homeassistant-koolnova/issues))
+- **Issues**: [GitHub Issues](https://github.com/thcuba/homeassistant-koolnova/issues)
 - **Documentation**: the `docs/` folder
 - **License**: MIT
