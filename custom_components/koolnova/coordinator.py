@@ -55,12 +55,107 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             config_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY)
         )
 
+    def _fetch_data_fallback(self) -> dict:
+        """Fetch data using alternative 'devices' endpoint as fallback."""
+        try:
+            _LOGGER.debug("Attempting fallback data fetch via /devices/ endpoint")
+            devices = self.client.get_devices()
+            if not devices:
+                _LOGGER.warning("Fallback: No devices found in /devices/")
+                return None
+
+            sensors = []
+            projects_dict = {}
+
+            for device in devices:
+                sensor_data = device.get("sensor")
+                if not sensor_data:
+                    continue
+
+                topic_info = sensor_data.get("topic_info", {})
+                topic_id = topic_info.get("id", "Unknown")
+
+                # Map to internal sensor format
+                sensors.append({
+                    "Room_Name": sensor_data.get("name"),
+                    "Room_id": sensor_data.get("id"),
+                    "Room_status": sensor_data.get("status"),
+                    "Room_update_at": sensor_data.get("updated_at"),
+                    "Room_actual_temp": sensor_data.get("temperature"),
+                    "Room_setpoint_temp": sensor_data.get("setpoint_temperature"),
+                    "Room_speed": sensor_data.get("speed"),
+                    "Topic_id": topic_id,
+                    "topic_info": topic_info
+                })
+
+                # Extract project/topic info if not already captured
+                if topic_id not in projects_dict:
+                    projects_dict[topic_id] = {
+                        "Project_Name": device.get("project_name", "Home"),
+                        "Topic_Name": topic_info.get("name", "Main"),
+                        "Topic_id": topic_id,
+                        "Mode": topic_info.get("mode"),
+                        "is_stop": topic_info.get("is_stop"),
+                        "is_online": topic_info.get("is_online"),
+                        "eco": topic_info.get("eco"),
+                        "last_sync": topic_info.get("last_sync"),
+                    }
+
+            hubs = []
+            try:
+                module_ids = self.client.search_all_ids()
+                for hub_id in module_ids.get("hub", []):
+                    try:
+                        hub_state = self.client.get_hub_state(hub_id)
+                        hubs.append({
+                            "Hub_id": hub_id,
+                            "State": hub_state.get("state"),
+                            "Mode": hub_state.get("mode")
+                        })
+                    except Exception as e:
+                        _LOGGER.warning("Could not fetch state for hub %s: %s", hub_id, e)
+            except Exception as e:
+                _LOGGER.warning("Could not discover hubs: %s", e)
+
+            return {
+                "projects": list(projects_dict.values()),
+                "sensors": sensors,
+                "hubs": hubs
+            }
+        except Exception as err:
+            _LOGGER.error("Fallback data fetch failed: %s", err)
+            return None
+
     def _fetch_data(self) -> dict:
         """Fetch all data from Koolnova API. Called during initial setup."""
         try:
             _LOGGER.debug("Fetching all data from Koolnova API (initial setup)")
-            projects = self.client.get_project()
-            sensors = self.client.get_sensors()
+            try:
+                projects = self.client.get_project()
+                sensors = self.client.get_sensors()
+
+                # Also try to discover hubs even in primary mode if requested
+                hubs = []
+                try:
+                    module_ids = self.client.search_all_ids()
+                    for hub_id in module_ids.get("hub", []):
+                        hub_state = self.client.get_hub_state(hub_id)
+                        hubs.append({
+                            "Hub_id": hub_id,
+                            "State": hub_state.get("state"),
+                            "Mode": hub_state.get("mode")
+                        })
+                except:
+                    pass
+
+                return {"projects": projects, "sensors": sensors, "hubs": hubs}
+            except Exception as e:
+                _LOGGER.warning("Primary fetch failed, trying fallback: %s", e)
+                fallback_data = self._fetch_data_fallback()
+                if fallback_data:
+                    return fallback_data
+                raise
+
             _LOGGER.debug("Successfully fetched %d projects and %d sensors",
                          len(projects), len(sensors))
             return {"projects": projects, "sensors": sensors}
@@ -75,7 +170,15 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         """Fetch only sensors data from Koolnova API. Called during periodic updates."""
         try:
             _LOGGER.debug("Fetching sensors data from Koolnova API (periodic update)")
-            sensors = self.client.get_sensors()
+            try:
+                sensors = self.client.get_sensors()
+            except Exception as e:
+                _LOGGER.warning("Primary sensors fetch failed, trying fallback: %s", e)
+                fallback_data = self._fetch_data_fallback()
+                if fallback_data:
+                    return fallback_data
+                raise
+
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
             # Keep existing projects data, only update sensors
             return {"projects": self.data.get("projects", []), "sensors": sensors}
