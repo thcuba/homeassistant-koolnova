@@ -51,8 +51,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
 
     if coordinator.data.get("projects"):
-        proj = coordinator.data["projects"][0]
-        entities.append(KoolnovaProjectEntity(coordinator, entry, proj))
+        for proj in coordinator.data["projects"]:
+            entities.append(KoolnovaProjectEntity(coordinator, entry, proj))
+
+    # Add Hub entities if any
+    if coordinator.data.get("hubs"):
+        for hub in coordinator.data["hubs"]:
+            entities.append(KoolnovaHubEntity(coordinator, entry, hub))
 
     # Agregar sensor de conectividad único
     entities.append(KoolnovaConnectivitySensor(coordinator, entry))
@@ -674,3 +679,83 @@ class KoolnovaConnectivitySensor(SensorEntity):
                     attrs[f"Última actualización {room_name}"] = room_last_sync
 
         return attrs
+
+class KoolnovaHubEntity(ClimateEntity):
+    """Hub entity for Legacy/Hub based control."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "koolnova_hub"
+
+    def __init__(self, coordinator, config_entry, hub):
+        """Initialize the hub entity."""
+        self.coordinator = coordinator
+        self.config_entry = config_entry
+        self._hub = hub
+        self._hub_id = hub["Hub_id"]
+
+        self._attr_unique_id = f"{config_entry.entry_id}_hub_{self._hub_id}"
+        self._attr_supported_features = ClimateEntityFeature.PRESET_MODE
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_should_poll = False
+        self._attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
+
+    @property
+    def name(self):
+        """Return the name of the hub."""
+        return f"Koolnova Hub {self._hub_id}"
+
+    @property
+    def hvac_mode(self):
+        """Return current HVAC mode."""
+        self._update_hub_data()
+        return HVACMode.AUTO if self._hub.get("State") else HVACMode.OFF
+
+    @property
+    def preset_modes(self):
+        """Return available preset modes (manual, auto, planning)."""
+        return ["manual", "auto", "planning"]
+
+    @property
+    def preset_mode(self):
+        """Return current preset mode."""
+        self._update_hub_data()
+        return self._hub.get("Mode")
+
+    async def async_added_to_hass(self):
+        """Connect to coordinator."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    def _update_hub_data(self):
+        """Update local hub data from coordinator."""
+        for hub in self.coordinator.data.get("hubs", []):
+            if hub.get("Hub_id") == self._hub_id:
+                self._hub = hub
+                break
+
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Set hub state."""
+        state = (hvac_mode == HVACMode.AUTO)
+        try:
+            result = await self.coordinator.hass.async_add_executor_job(
+                self.coordinator.client.set_hub_state, self._hub_id, state
+            )
+            # Update cache
+            self._hub.update({"State": result.get("state"), "Mode": result.get("mode")})
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error("Error setting hub state: %s", err)
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set hub preset mode."""
+        try:
+            result = await self.coordinator.hass.async_add_executor_job(
+                self.coordinator.client.set_hub_mode, self._hub_id, preset_mode
+            )
+            # Update cache
+            self._hub.update({"State": result.get("state"), "Mode": result.get("mode")})
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error("Error setting hub mode: %s", err)

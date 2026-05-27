@@ -186,10 +186,11 @@ class KoolnovaAPIRestClient:
         """Return all device ids grouped by type (koolnova / hub).
 
         This is a minimal implementation used by the test-suite: it GETs
-        `/modules` and classifies entries by `ModuleType_Id` (1 => koolnova,
+        `/modules/` and classifies entries by `ModuleType_Id` (1 => koolnova,
         2 => hub) using the `Serial` field as identifier.
         """
-        resp = self._get_session().rest_request("GET", "modules")
+        headers = COMMON_HEADERS.copy()
+        resp = self._get_session().rest_request("GET", "modules/", headers=headers)
         json_resp = resp.json()
         koolnova = []
         hub = []
@@ -219,7 +220,8 @@ class KoolnovaAPIRestClient:
         Expected to call `/modules/{id}/NewResume` and convert the mocked
         response into the structure used by the tests.
         """
-        resp = self._get_session().rest_request("GET", f"modules/{koolnova_id}/NewResume")
+        headers = COMMON_HEADERS.copy()
+        resp = self._get_session().rest_request("GET", f"modules/{koolnova_id}/NewResume", headers=headers)
         json_resp = resp.json()
 
         # If the API returned no data at all
@@ -265,7 +267,8 @@ class KoolnovaAPIRestClient:
         }
 
     def get_hub_state(self, hub_id: str) -> Dict[str, Any]:
-        resp = self._get_session().rest_request("GET", f"hub/{hub_id}/state")
+        headers = COMMON_HEADERS.copy()
+        resp = self._get_session().rest_request("GET", f"hub/{hub_id}/state", headers=headers)
         json_resp = resp.json()
         state_equipment = json_resp.get("stateEquipment")
         behavior = json_resp.get("behavior")
@@ -274,7 +277,8 @@ class KoolnovaAPIRestClient:
     def set_hub_mode(self, hub_id: str, target_mode: str) -> Dict[str, Any]:
         if target_mode not in ("manual", "auto", "planning"):
             raise ValueError("Invalid mode")
-        resp = self._get_session().rest_request("PUT", f"hub/{hub_id}/mode/{target_mode}")
+        headers = PATCH_HEADERS.copy()
+        resp = self._get_session().rest_request("PUT", f"hub/{hub_id}/mode/{target_mode}", headers=headers)
         json_resp = resp.json()
         # Normalize response to {'state': bool, 'mode': behavior}
         state_equipment = json_resp.get("stateEquipment")
@@ -285,9 +289,30 @@ class KoolnovaAPIRestClient:
         # The tests expect a call to /hub/{id}/Manual/True for True
         path = f"hub/{hub_id}/Manual/{str(state)}"
         # Use POST/PUT depending on API: tests mock POST for this endpoint
-        response = self._get_session().rest_request("POST", path)
+        headers = PATCH_HEADERS.copy()
+        response = self._get_session().rest_request("POST", path, headers=headers)
         # After changing state, return current state (tests will mock the GET)
         return self.get_hub_state(hub_id)
+
+    def get_devices(self) -> List[Dict[str, Any]]:
+        """Return list of devices."""
+        headers = COMMON_HEADERS.copy()
+        response = self._get_session().rest_request("GET", "devices/", headers=headers)
+        response.raise_for_status()
+        json_resp = response.json()
+        if not json_resp or "data" not in json_resp:
+            return []
+        return json_resp["data"]
+
+    def get_notifications(self) -> List[Dict[str, Any]]:
+        """Return list of notifications."""
+        headers = COMMON_HEADERS.copy()
+        response = self._get_session().rest_request("GET", "notifications/", headers=headers)
+        response.raise_for_status()
+        json_resp = response.json()
+        if not json_resp or "data" not in json_resp:
+            return []
+        return json_resp["data"]
 
     def update_project(self, topic_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
