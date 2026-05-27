@@ -11,14 +11,11 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.climate import HVACMode
 
-from .koolnova_api.client import KoolnovaAPIRestClient
 from .koolnova_api.exceptions import KoolnovaError
 
 from .const import (
     DOMAIN,
     DEFAULT_UPDATE_INTERVAL,
-    MIN_UPDATE_INTERVAL,
-    MAX_UPDATE_INTERVAL,
     DEFAULT_PROJECT_UPDATE_FREQUENCY,
     MIN_PROJECT_UPDATE_FREQUENCY,
     MAX_PROJECT_UPDATE_FREQUENCY,
@@ -31,7 +28,6 @@ from .const import (
     DEFAULT_TEMP_PRECISION,
     AVAILABLE_HVAC_MODES,
     AVAILABLE_TEMP_PRECISIONS,
-    CONF_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
     CONF_PROJECT_HVAC_MODES,
     CONF_ZONE_HVAC_MODES,
@@ -83,7 +79,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             config_data = {
                 CONF_EMAIL: user_input[CONF_EMAIL],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
-                CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL,
                 CONF_PROJECT_UPDATE_FREQUENCY: DEFAULT_PROJECT_UPDATE_FREQUENCY,
                 CONF_PROJECT_HVAC_MODES: [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES],
                 CONF_ZONE_HVAC_MODES: [mode.value for mode in DEFAULT_ZONE_HVAC_MODES],
@@ -159,7 +154,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_options = self.entry.options
 
         # Obtener valores actuales o por defecto
-        current_interval = current_options.get(CONF_UPDATE_INTERVAL, current_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
         current_project_update_freq = current_options.get(CONF_PROJECT_UPDATE_FREQUENCY, current_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY))
         current_project_modes = current_options.get(CONF_PROJECT_HVAC_MODES, current_data.get(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]))
         current_zone_modes = current_options.get(CONF_ZONE_HVAC_MODES, current_data.get(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES]))
@@ -168,10 +162,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_precision = current_options.get(CONF_TEMP_PRECISION, current_data.get(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION))
 
         return vol.Schema({
-            vol.Required(CONF_UPDATE_INTERVAL, default=current_interval): vol.All(
-                cv.positive_int,
-                vol.Range(min=MIN_UPDATE_INTERVAL, max=MAX_UPDATE_INTERVAL)
-            ),
             vol.Required(CONF_PROJECT_UPDATE_FREQUENCY, default=current_project_update_freq): vol.All(
                 cv.positive_int,
                 vol.Range(min=MIN_PROJECT_UPDATE_FREQUENCY, max=MAX_PROJECT_UPDATE_FREQUENCY)

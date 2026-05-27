@@ -13,9 +13,7 @@ DOMAIN = "koolnova"
 PLATFORMS = ["climate"]
 
 # CONFIGURABLES: Valores por defecto y limites
-DEFAULT_UPDATE_INTERVAL = 10  # segundos
-MIN_UPDATE_INTERVAL = 5       # minimo configurable
-MAX_UPDATE_INTERVAL = 300     # maximo configurable
+DEFAULT_UPDATE_INTERVAL = 45  # segundos
 DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # cada cuantas actualizaciones se actualizan proyectos
 MIN_PROJECT_UPDATE_FREQUENCY = 1      # minimo configurable (siempre actualizar)
 MAX_PROJECT_UPDATE_FREQUENCY = 300    # maximo configurable
@@ -34,7 +32,6 @@ AVAILABLE_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT, HVACMode.OFF, HVACMode.AUT
 AVAILABLE_TEMP_PRECISIONS = [0.5, 1.0]
 
 # Claves de configuracion
-CONF_UPDATE_INTERVAL = "update_interval"
 CONF_PROJECT_UPDATE_FREQUENCY = "project_update_frequency"
 CONF_PROJECT_HVAC_MODES = "project_hvac_modes"
 CONF_ZONE_HVAC_MODES = "zone_hvac_modes"
