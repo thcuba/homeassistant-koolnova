@@ -1,7 +1,5 @@
 {
   "name": "Koolnova",
   "homeassistant": "2024.12.0",
-  "render_readme": true,
-  "categories": ["integration"],
   "country": ["IT"]
 }
