@@ -11,6 +11,7 @@ from .koolnova_api.client import KoolnovaAPIRestClient
 from .koolnova_api.exceptions import KoolnovaError
 
 from .const import (
+    CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
     DEFAULT_PROJECT_UPDATE_FREQUENCY,
@@ -27,11 +28,16 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         config_data = config_entry.data
         options_data = config_entry.options
         
+        update_interval = options_data.get(
+            CONF_UPDATE_INTERVAL,
+            config_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+        )
+
         super().__init__(
             hass,
             _LOGGER,
             name="koolnova",
-            update_interval=timedelta(seconds=DEFAULT_UPDATE_INTERVAL),
+            update_interval=timedelta(seconds=update_interval),
         )
 
         self.client = KoolnovaAPIRestClient(
@@ -506,6 +512,14 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         """Handle updated options - update coordinator settings without full restart."""
         config_data = self.config_entry.data
         options_data = self.config_entry.options
+
+        # Update update interval
+        new_update_interval = options_data.get(
+            CONF_UPDATE_INTERVAL,
+            config_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+        )
+        self.update_interval = timedelta(seconds=new_update_interval)
+        _LOGGER.info("Updated coordinator update interval to %s seconds", new_update_interval)
 
         # Update project update frequency
         new_frequency = options_data.get(

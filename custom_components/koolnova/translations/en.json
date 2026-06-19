@@ -25,6 +25,7 @@
                 "title": "Configure Koolnova Options",
                 "description": "Customize integration behavior and limits",
                 "data": {
+                    "update_interval": "Update Interval (seconds)",
                     "project_update_frequency": "Project Update Frequency (cycles)",
                     "project_hvac_modes": "Project HVAC Modes",
                     "zone_hvac_modes": "Zone HVAC Modes",
@@ -41,7 +42,7 @@
     "entity": {
         "climate": {
             "koolnova_project": {
-                "name": "Koolnova Global Control",
+                "name": "Global Control",
                 "state_attributes": {
                     "preset_mode": {
                         "name": "Zone Mode",
@@ -53,7 +54,7 @@
                 }
             }
         },
-        "sensor": {
+        "binary_sensor": {
             "connectivity_status": {
                 "name": "Connectivity Status"
             }

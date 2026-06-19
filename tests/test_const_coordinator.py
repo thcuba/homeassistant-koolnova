@@ -11,23 +11,21 @@ class TestKoolnovaCoordinator(unittest.TestCase):
         self.config_entry.data = {
             "email": "test@example.com",
             "password": "password",
-            CONF_UPDATE_INTERVAL: 10  # Old interval
+            CONF_UPDATE_INTERVAL: 10
         }
         self.config_entry.options = {
-            CONF_UPDATE_INTERVAL: 20  # Old option interval
+            CONF_UPDATE_INTERVAL: 20
         }
         self.config_entry.entry_id = "test_entry_id"
 
-    def test_update_interval_is_fixed(self):
-        """Test that the update interval is fixed at DEFAULT_UPDATE_INTERVAL (45s)."""
+    def test_update_interval_initialization(self):
+        """Test that the update interval is initialized from options."""
         coordinator = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
-        self.assertEqual(coordinator.update_interval, timedelta(seconds=45))
-        self.assertEqual(DEFAULT_UPDATE_INTERVAL, 45)
+        self.assertEqual(coordinator.update_interval, timedelta(seconds=20))
 
-    def test_async_options_updated_ignores_interval(self):
-        """Test that async_options_updated does not change the update interval."""
+    def test_async_options_updated_changes_interval(self):
+        """Test that async_options_updated correctly changes the update interval."""
         coordinator = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
-        original_interval = coordinator.update_interval
 
         # Change options to a different interval
         self.config_entry.options = {
@@ -35,12 +33,11 @@ class TestKoolnovaCoordinator(unittest.TestCase):
             "project_update_frequency": 20
         }
 
-        # Call async_options_updated (it's async but doesn't await much in its logic)
+        # Call async_options_updated
         import asyncio
         asyncio.run(coordinator.async_options_updated())
 
-        self.assertEqual(coordinator.update_interval, original_interval)
-        self.assertEqual(coordinator.update_interval, timedelta(seconds=45))
+        self.assertEqual(coordinator.update_interval, timedelta(seconds=60))
         self.assertEqual(coordinator._project_update_frequency, 20)
 
 if __name__ == "__main__":

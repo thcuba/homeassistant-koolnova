@@ -42,7 +42,7 @@
     "entity": {
         "climate": {
             "koolnova_project": {
-                "name": "Controllo globale Koolnova",
+                "name": "Controllo globale",
                 "state_attributes": {
                     "preset_mode": {
                         "name": "Modalità zona",
@@ -54,7 +54,7 @@
                 }
             }
         },
-        "sensor": {
+        "binary_sensor": {
             "connectivity_status": {
                 "name": "Stato connettività"
             }
