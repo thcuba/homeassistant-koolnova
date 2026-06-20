@@ -12,6 +12,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.components.climate import HVACMode
 
 from .koolnova_api.exceptions import KoolnovaError
+from .koolnova_api.client import KoolnovaAPIRestClient
 
 from .const import (
     DOMAIN,
@@ -28,6 +29,7 @@ from .const import (
     DEFAULT_TEMP_PRECISION,
     AVAILABLE_HVAC_MODES,
     AVAILABLE_TEMP_PRECISIONS,
+    CONF_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
     CONF_PROJECT_HVAC_MODES,
     CONF_ZONE_HVAC_MODES,
@@ -79,6 +81,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             config_data = {
                 CONF_EMAIL: user_input[CONF_EMAIL],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
+                CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL,
                 CONF_PROJECT_UPDATE_FREQUENCY: DEFAULT_PROJECT_UPDATE_FREQUENCY,
                 CONF_PROJECT_HVAC_MODES: [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES],
                 CONF_ZONE_HVAC_MODES: [mode.value for mode in DEFAULT_ZONE_HVAC_MODES],
@@ -98,7 +101,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _validate_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate the user input allows us to connect."""
         try:
-            client = KoolnovaAPIRestClient(data[CONF_EMAIL], data[CONF_PASSWORD])
+            client = KoolnovaAPIRestClient(
+                username="",
+                email=data[CONF_EMAIL],
+                password=data[CONF_PASSWORD]
+            )
             
             # Test connection
             await self.hass.async_add_executor_job(client.get_project)
@@ -154,6 +161,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_options = self.entry.options
 
         # Obtener valores actuales o por defecto
+        current_update_interval = current_options.get(CONF_UPDATE_INTERVAL, current_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
         current_project_update_freq = current_options.get(CONF_PROJECT_UPDATE_FREQUENCY, current_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY))
         current_project_modes = current_options.get(CONF_PROJECT_HVAC_MODES, current_data.get(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]))
         current_zone_modes = current_options.get(CONF_ZONE_HVAC_MODES, current_data.get(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES]))
@@ -162,6 +170,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_precision = current_options.get(CONF_TEMP_PRECISION, current_data.get(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION))
 
         return vol.Schema({
+            vol.Required(CONF_UPDATE_INTERVAL, default=current_update_interval): vol.All(
+                cv.positive_int,
+                vol.Range(min=30, max=3600)
+            ),
             vol.Required(CONF_PROJECT_UPDATE_FREQUENCY, default=current_project_update_freq): vol.All(
                 cv.positive_int,
                 vol.Range(min=MIN_PROJECT_UPDATE_FREQUENCY, max=MAX_PROJECT_UPDATE_FREQUENCY)

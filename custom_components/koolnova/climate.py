@@ -18,7 +18,7 @@ from homeassistant.components.climate import (
     FAN_HIGH,
     FAN_AUTO,
 )
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.const import UnitOfTemperature
 from homeassistant.components.persistent_notification import async_create
 
@@ -59,9 +59,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for hub in coordinator.data["hubs"]:
             entities.append(KoolnovaHubEntity(coordinator, entry, hub))
 
-    # Agregar sensor de conectividad único
-    entities.append(KoolnovaConnectivitySensor(coordinator, entry))
-
     for sensor in coordinator.data.get("sensors", []):
         entities.append(KoolnovaZoneEntity(coordinator, entry, sensor))
 
@@ -83,7 +80,16 @@ class KoolnovaProjectEntity(ClimateEntity):
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE | 
             ClimateEntityFeature.FAN_MODE |
-            ClimateEntityFeature.PRESET_MODE
+            ClimateEntityFeature.PRESET_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
+        )
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_{project['Topic_id']}")},
+            name="Koolnova System",
+            manufacturer="Koolnova",
+            model="REST API Gateway",
         )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
@@ -278,16 +284,16 @@ class KoolnovaProjectEntity(ClimateEntity):
             "zones_fan_breakdown": zone_fan_breakdown,
         }
 
-        # Agregar datos de conectividad del sistema (desde sensores)
+        # System connectivity data
         if system_connectivity.get("system_rssi") is not None:
             attrs["system_rssi"] = system_connectivity["system_rssi"]
         if system_connectivity.get("online_status") is not None:
             attrs["online_status"] = system_connectivity["online_status"]
         if system_connectivity.get("last_sync"):
             try:
-                attrs["last_sync"] = datetime.fromisoformat(system_connectivity["last_sync"])
+                attrs["system_last_sync"] = datetime.fromisoformat(system_connectivity["last_sync"])
             except (ValueError, TypeError):
-                attrs["last_sync"] = system_connectivity["last_sync"]
+                attrs["system_last_sync"] = system_connectivity["last_sync"]
 
         return attrs
 
@@ -422,9 +428,22 @@ class KoolnovaZoneEntity(ClimateEntity):
         self._sensor_id = sensor["Room_id"]
         self._attr_name = f"Koolnova {sensor['Room_Name']}"
         self._attr_unique_id = f"{config_entry.entry_id}_zone_{sensor['Room_id']}"
-        self._attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
+        self._attr_supported_features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE |
+            ClimateEntityFeature.FAN_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
+        )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
+
+        project_id = sensor.get("Topic_id", "global")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_{project_id}")},
+            name="Koolnova System",
+            manufacturer="Koolnova",
+            model="REST API Gateway",
+        )
 
     def _get_config_value(self, key, default):
         """Get configuration value from options or data."""
@@ -611,75 +630,6 @@ class KoolnovaZoneEntity(ClimateEntity):
             async_create(self.hass, f"Error updating zone HVAC mode: {err}", title="Koolnova")
 
 
-class KoolnovaConnectivitySensor(SensorEntity):
-    """Sensor único con toda la información de conectividad del sistema Koolnova."""
-
-    _attr_has_entity_name = True
-    _attr_translation_key = "connectivity_status"
-    _attr_icon = "mdi:router-wireless"
-    _attr_should_poll = False
-
-    def __init__(self, coordinator, config_entry):
-        """Initialize the connectivity sensor."""
-        self.coordinator = coordinator
-        self.config_entry = config_entry
-        self._attr_unique_id = f"{config_entry.entry_id}_connectivity_status"
-
-    async def async_added_to_hass(self):
-        """Connect to coordinator."""
-        await super().async_added_to_hass()
-        self.async_on_remove(
-            self.coordinator.async_add_listener(self.async_write_ha_state)
-        )
-
-    @property
-    def state(self):
-        """Estado: Online/Offline basado en el sistema."""
-        sensors = self.coordinator.data.get("sensors", [])
-        if not sensors:
-            return "Desconocido"
-
-        topic_info = sensors[0].get("topic_info", {})
-        is_online = topic_info.get("is_online")
-
-        return "Online" if is_online else "Offline"
-
-    @property
-    def extra_state_attributes(self):
-        """Todos los atributos de conectividad."""
-        sensors = self.coordinator.data.get("sensors", [])
-        if not sensors:
-            return {}
-
-        # Información del sistema (global)
-        topic_info = sensors[0].get("topic_info", {})
-        attrs = {
-            "Señal WiFi": topic_info.get("rssi"),
-            "Online": topic_info.get("is_online"),
-        }
-
-        # Última actualización del sistema
-        system_last_sync = topic_info.get("last_sync")
-        if system_last_sync:
-            try:
-                attrs["Última actualización"] = datetime.fromisoformat(system_last_sync)
-            except (ValueError, TypeError):
-                attrs["Última actualización"] = system_last_sync
-
-        # Última actualización de cada habitación
-        for sensor in sensors:
-            room_name = sensor.get("Room_Name", f"habitacion_{sensor.get('Room_id')}")
-            sensor_topic_info = sensor.get("topic_info", {})
-            room_last_sync = sensor_topic_info.get("last_sync")
-
-            if room_last_sync:
-                try:
-                    attrs[f"Última actualización {room_name}"] = datetime.fromisoformat(room_last_sync)
-                except (ValueError, TypeError):
-                    attrs[f"Última actualización {room_name}"] = room_last_sync
-
-        return attrs
-
 class KoolnovaHubEntity(ClimateEntity):
     """Hub entity for Legacy/Hub based control."""
 
@@ -694,8 +644,20 @@ class KoolnovaHubEntity(ClimateEntity):
         self._hub_id = hub["Hub_id"]
 
         self._attr_unique_id = f"{config_entry.entry_id}_hub_{self._hub_id}"
-        self._attr_supported_features = ClimateEntityFeature.PRESET_MODE
+        self._attr_supported_features = (
+            ClimateEntityFeature.PRESET_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
+        )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+
+        # Hubs are legacy, but let's try to group them too if they belong to a project
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_hub_{self._hub_id}")},
+            name=f"Koolnova Hub {self._hub_id}",
+            manufacturer="Koolnova",
+            model="Legacy Hub",
+        )
         self._attr_should_poll = False
         self._attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
 

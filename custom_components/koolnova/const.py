@@ -10,7 +10,7 @@ from homeassistant.components.climate import (
 )
 
 DOMAIN = "koolnova"
-PLATFORMS = ["climate"]
+PLATFORMS = ["climate", "binary_sensor"]
 
 # CONFIGURABLES: Valores por defecto y limites
 DEFAULT_UPDATE_INTERVAL = 45  # segundos
@@ -32,6 +32,7 @@ AVAILABLE_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT, HVACMode.OFF, HVACMode.AUT
 AVAILABLE_TEMP_PRECISIONS = [0.5, 1.0]
 
 # Claves de configuracion
+CONF_UPDATE_INTERVAL = "update_interval"
 CONF_PROJECT_UPDATE_FREQUENCY = "project_update_frequency"
 CONF_PROJECT_HVAC_MODES = "project_hvac_modes"
 CONF_ZONE_HVAC_MODES = "zone_hvac_modes"
