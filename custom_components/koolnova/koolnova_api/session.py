@@ -20,9 +20,9 @@ from .const import KOOLNOVA_AUTH_URL
 
 _LOGGER = logging.getLogger(__name__)
 
-# ============= COSTANTI CENTRALIZZATE USER-AGENT =============
+# ============= CENTRALIZED USER-AGENT CONSTANTS =============
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-# =============================================================
+# ============================================================
 
 # Retry policy constants
 DEFAULT_MAX_RETRIES = 3
@@ -88,7 +88,7 @@ class KoolnovaClientSession(Session):
             "origin": "https://app.koolnova.com",
             "referer": "https://app.koolnova.com/",
             "cache-control": "no-cache",
-            "user-agent": DEFAULT_USER_AGENT,  # <- USAR CONSTANTE
+            "user-agent": DEFAULT_USER_AGENT,  # <- USE CONSTANT
         }
 
         # Improved retry logic with exponential backoff for rate limiting
@@ -229,7 +229,7 @@ class KoolnovaClientSession(Session):
         headers_auth = {
             "Authorization": "Bearer " + token,
             "Cache-Control": "no-cache",
-            "User-Agent": DEFAULT_USER_AGENT,  # <- AGGIUNTO USER-AGENT QUI
+            "User-Agent": DEFAULT_USER_AGENT,  # <- ADDED USER-AGENT HERE
         }
         # Merge headers passed as argument
         headers = kwargs.pop("headers", {})

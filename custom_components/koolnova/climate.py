@@ -68,7 +68,7 @@ class KoolnovaProjectEntity(ClimateEntity):
     """Project entity with global control: temperature, project HVAC mode, zone fan speed, and zone HVAC mode."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "koolnova_project" # Clave para que HA busque traducciones específicas.
+    _attr_translation_key = "koolnova_project"  # Key for HA to look for specific translations.
 
     def __init__(self, coordinator, config_entry, project):
         """Initialize the project entity."""
@@ -141,7 +141,7 @@ class KoolnovaProjectEntity(ClimateEntity):
     @property
     def preset_modes(self):
         """Return available zone HVAC modes as custom preset modes."""
-        # Devolvemos los valores ('off', 'auto') que se usarán como claves en los ficheros de traducción.
+        # Return the values ('off', 'auto') that will be used as keys in the translation files.
         return [mode.value for mode in self._get_zone_hvac_modes()]
 
     @property
@@ -249,14 +249,14 @@ class KoolnovaProjectEntity(ClimateEntity):
         sensors = self.coordinator.data.get("sensors", [])
         sensors_count = len(sensors)
 
-        # Obtener datos de conectividad del sistema desde sensores (más actualizados)
+        # Get system connectivity data from sensors (more up-to-date)
         system_connectivity = {}
         if sensors:
-            topic_info = sensors[0].get("topic_info", {})  # Cualquier sensor tiene los mismos datos globales
+            topic_info = sensors[0].get("topic_info", {})  # Any sensor has the same global data
             system_connectivity = {
                 "system_rssi": topic_info.get("rssi"),
-                "online_status": topic_info.get("is_online"),  # Más actualizado que del proyecto
-                "last_sync": topic_info.get("last_sync"),      # Más actualizado que del proyecto
+                "online_status": topic_info.get("is_online"),  # More up-to-date than project data
+                "last_sync": topic_info.get("last_sync"),      # More up-to-date than project data
             }
 
         zone_status_breakdown = {}
@@ -421,12 +421,14 @@ class KoolnovaProjectEntity(ClimateEntity):
 class KoolnovaZoneEntity(ClimateEntity):
     """Individual room zone as a climate device."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, coordinator, config_entry, sensor):
         self.coordinator = coordinator
         self.config_entry = config_entry
         self._sensor = sensor
         self._sensor_id = sensor["Room_id"]
-        self._attr_name = f"Koolnova {sensor['Room_Name']}"
+        self._attr_name = sensor["Room_Name"]
         self._attr_unique_id = f"{config_entry.entry_id}_zone_{sensor['Room_id']}"
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE |
@@ -550,7 +552,7 @@ class KoolnovaZoneEntity(ClimateEntity):
         """Return extra state attributes."""
         self._update_sensor_data()
 
-        # Obtener system_last_sync del sensor (datos globales del controlador)
+        # Get system_last_sync from sensor (global controller data)
         system_last_sync = None
         topic_info = self._sensor.get("topic_info", {})
         if topic_info and topic_info.get("last_sync"):
@@ -565,7 +567,7 @@ class KoolnovaZoneEntity(ClimateEntity):
             "room_speed_raw": self._sensor.get("Room_speed"),
             "topic_id": self._sensor.get("Topic_id", None),
             "last_updated": self._sensor.get("Room_update_at"),
-            "system_last_sync": system_last_sync,  # Última sync del sistema
+            "system_last_sync": system_last_sync,  # Last system sync
         }
 
     async def async_set_temperature(self, **kwargs):
@@ -660,11 +662,6 @@ class KoolnovaHubEntity(ClimateEntity):
         )
         self._attr_should_poll = False
         self._attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
-
-    @property
-    def name(self):
-        """Return the name of the hub."""
-        return f"Koolnova Hub {self._hub_id}"
 
     @property
     def hvac_mode(self):
