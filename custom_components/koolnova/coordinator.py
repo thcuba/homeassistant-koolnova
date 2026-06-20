@@ -24,7 +24,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry):
         """Initialize coordinator."""
-        # Obtener intervalo de actualizacion configurado
+        # Get configured update interval
         config_data = config_entry.data
         options_data = config_entry.options
         
@@ -48,7 +48,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         self.config_entry = config_entry
         self.data = {"projects": [], "sensors": []}
 
-        # Contador para actualizaciones periódicas de proyectos
+        # Counter for periodic project updates
         self._project_update_counter = 0
         self._project_update_frequency = options_data.get(
             CONF_PROJECT_UPDATE_FREQUENCY,
@@ -229,8 +229,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                                 self._project_update_counter, self._project_update_frequency)
                     self._project_update_counter = 0  # Reset counter
                     result = await self.hass.async_add_executor_job(self._fetch_data)
-                    
-                    # Disparar evento después de actualización completa
+
+                    # Fire event after full update
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "full",
                         "success": True,
@@ -247,8 +247,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Using optimized polling: sensors only (projects cached) - counter: %d/%d",
                                 self._project_update_counter, self._project_update_frequency)
                     result = await self.hass.async_add_executor_job(self._fetch_sensors_only)
-                    
-                    # Disparar evento después de actualización parcial (solo sensores)
+
+                    # Fire event after partial update (sensors only)
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "sensors_only",
                         "success": True,
@@ -264,8 +264,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug("Initial setup: fetching complete dataset (projects + sensors)")
                 self._project_update_counter = 0
                 result = await self.hass.async_add_executor_job(self._fetch_data)
-                
-                # Disparar evento después de setup inicial
+
+                # Fire event after initial setup
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "initial",
                     "success": True,
@@ -285,8 +285,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 # For auth failures, return existing data if available to avoid disabling the integration
                 if self.data and (self.data.get("projects") or self.data.get("sensors")):
                     _LOGGER.info("Returning cached data due to authentication error")
-                    
-                    # Disparar evento de error con datos cacheados
+
+                    # Fire error event with cached data
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "cached",
                         "success": False,
@@ -299,8 +299,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     return self.data
                 else:
                     # No cached data available, re-raise to trigger proper error handling
-                    
-                    # Disparar evento de error crítico
+
+                    # Fire critical error event
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "failed",
                         "success": False,
@@ -312,8 +312,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     raise UpdateFailed(f"Authentication failed and no cached data available: {err}")
             else:
                 # Re-raise other errors
-                
-                # Disparar evento de error genérico
+
+                # Fire generic error event
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "failed",
                     "success": False,

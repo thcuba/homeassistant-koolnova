@@ -52,6 +52,19 @@
                         }
                     }
                 }
+            },
+            "koolnova_hub": {
+                "name": "Hub Control",
+                "state_attributes": {
+                    "preset_mode": {
+                        "name": "Mode",
+                        "state": {
+                            "manual": "Manual",
+                            "auto": "Auto",
+                            "planning": "Planning"
+                        }
+                    }
+                }
             }
         },
         "binary_sensor": {
