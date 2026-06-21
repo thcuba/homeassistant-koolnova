@@ -1,6 +1,5 @@
 {
   "name": "Koolnova",
-  "categories": ["integration"],
   "homeassistant": "2024.12.0",
   "country": ["IT"]
 }
