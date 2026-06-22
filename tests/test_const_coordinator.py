@@ -11,17 +11,17 @@ class TestKoolnovaCoordinator(unittest.TestCase):
         self.config_entry.data = {
             "email": "test@example.com",
             "password": "password",
-            CONF_UPDATE_INTERVAL: 10
+            CONF_UPDATE_INTERVAL: 60
         }
         self.config_entry.options = {
-            CONF_UPDATE_INTERVAL: 20
+            CONF_UPDATE_INTERVAL: 70
         }
         self.config_entry.entry_id = "test_entry_id"
 
     def test_update_interval_initialization(self):
         """Test that the update interval is initialized from options."""
         coordinator = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
-        self.assertEqual(coordinator.update_interval, timedelta(seconds=20))
+        self.assertEqual(coordinator.update_interval, timedelta(seconds=70))
 
     def test_async_options_updated_changes_interval(self):
         """Test that async_options_updated correctly changes the update interval."""
@@ -29,7 +29,7 @@ class TestKoolnovaCoordinator(unittest.TestCase):
 
         # Change options to a different interval
         self.config_entry.options = {
-            CONF_UPDATE_INTERVAL: 60,
+            CONF_UPDATE_INTERVAL: 80,
             "project_update_frequency": 20
         }
 
@@ -37,7 +37,7 @@ class TestKoolnovaCoordinator(unittest.TestCase):
         import asyncio
         asyncio.run(coordinator.async_options_updated())
 
-        self.assertEqual(coordinator.update_interval, timedelta(seconds=60))
+        self.assertEqual(coordinator.update_interval, timedelta(seconds=80))
         self.assertEqual(coordinator._project_update_frequency, 20)
 
 if __name__ == "__main__":

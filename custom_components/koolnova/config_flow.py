@@ -172,7 +172,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return vol.Schema({
             vol.Required(CONF_UPDATE_INTERVAL, default=current_update_interval): vol.All(
                 cv.positive_int,
-                vol.Range(min=30, max=3600)
+                vol.Range(min=60, max=3600)
             ),
             vol.Required(CONF_PROJECT_UPDATE_FREQUENCY, default=current_project_update_freq): vol.All(
                 cv.positive_int,

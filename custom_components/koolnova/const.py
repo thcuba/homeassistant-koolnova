@@ -13,7 +13,7 @@ DOMAIN = "koolnova"
 PLATFORMS = ["climate", "binary_sensor"]
 
 # CONFIGURABLES: Valores por defecto y limites
-DEFAULT_UPDATE_INTERVAL = 45  # segundos
+DEFAULT_UPDATE_INTERVAL = 60  # segundos
 DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # cada cuantas actualizaciones se actualizan proyectos
 MIN_PROJECT_UPDATE_FREQUENCY = 1      # minimo configurable (siempre actualizar)
 MAX_PROJECT_UPDATE_FREQUENCY = 300    # maximo configurable
