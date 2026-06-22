@@ -135,16 +135,16 @@
       "classification": "❌ NO EXISTE"
     },
     "service/reload": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     },
     "daemon/restart": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     },
     "daemon/reset": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     }
   },
   "🔧 ADMIN": {
@@ -169,8 +169,8 @@
       "classification": "❌ NO EXISTE"
     },
     "root/restart": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     },
     "root/reset": {
       "code": "404",
@@ -187,8 +187,8 @@
       "classification": "❌ NO EXISTE"
     },
     "system/manage": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     },
     "platform/restart": {
       "code": "404",
@@ -267,12 +267,12 @@
       "classification": "❌ NO EXISTE"
     },
     "endpoint/restart": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     },
     "endpoint/reset": {
-      "code": "404",
-      "classification": "❌ NO EXISTE"
+      "code": "000",
+      "classification": "🤔 OTRO: 000"
     }
   }
 }
