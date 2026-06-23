@@ -319,6 +319,22 @@ class KoolnovaProjectEntity(ClimateEntity):
                 self.hass, f"Error updating project mode: {err}", title="Koolnova Project Mode"
             )
 
+    async def async_turn_on(self):
+        """Turn the entity on."""
+        if HVACMode.AUTO in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.AUTO)
+        elif len(self.hvac_modes) > 0:
+            # Pick first non-off mode
+            for mode in self.hvac_modes:
+                if mode != HVACMode.OFF:
+                    await self.async_set_hvac_mode(mode)
+                    break
+
+    async def async_turn_off(self):
+        """Turn the entity off."""
+        if HVACMode.OFF in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.OFF)
+
     async def async_set_fan_mode(self, fan_mode):
         """Set global fan mode for ALL zones."""
         if fan_mode not in self.fan_modes:
@@ -631,6 +647,22 @@ class KoolnovaZoneEntity(ClimateEntity):
             _LOGGER.error("Error updating zone HVAC mode for %s: %s", self._attr_name, err)
             async_create(self.hass, f"Error updating zone HVAC mode: {err}", title="Koolnova")
 
+    async def async_turn_on(self):
+        """Turn the entity on."""
+        if HVACMode.AUTO in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.AUTO)
+        elif len(self.hvac_modes) > 0:
+            # Pick first non-off mode
+            for mode in self.hvac_modes:
+                if mode != HVACMode.OFF:
+                    await self.async_set_hvac_mode(mode)
+                    break
+
+    async def async_turn_off(self):
+        """Turn the entity off."""
+        if HVACMode.OFF in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.OFF)
+
 
 class KoolnovaHubEntity(ClimateEntity):
     """Hub entity for Legacy/Hub based control."""
@@ -718,3 +750,11 @@ class KoolnovaHubEntity(ClimateEntity):
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Error setting hub mode: %s", err)
+
+    async def async_turn_on(self):
+        """Turn the entity on."""
+        await self.async_set_hvac_mode(HVACMode.AUTO)
+
+    async def async_turn_off(self):
+        """Turn the entity off."""
+        await self.async_set_hvac_mode(HVACMode.OFF)
