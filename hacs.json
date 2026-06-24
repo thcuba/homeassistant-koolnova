@@ -1,6 +1,5 @@
 {
   "name": "Koolnova",
   "homeassistant": "2024.12.0",
-  "country": ["IT"],
-  "home": "https://github.com/thcuba/homeassistant-koolnova"
+  "country": ["IT"]
 }
