@@ -8,7 +8,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from dateutil.parser import parse
 
 from .exceptions import KoolnovaError
 from .session import KoolnovaClientSession
@@ -29,7 +28,7 @@ class KoolnovaAPIRestClient:
         Args:
             username: string containing your Koolnova's app username
             password: string containing your Koolnova's app password
-            email: optional email associated to the account (API accepte username, email, password)
+            email: optional email associated to the account (API accepts username, email, password)
         """
         self.username = username
         self.password = password
@@ -90,7 +89,7 @@ class KoolnovaAPIRestClient:
                 + "Or perhaps API has changed :(."
             )
 
-        #_LOGGER.debug("Réponse brute  : %s", json_resp)
+        #_LOGGER.debug("Raw response: %s", json_resp)
 
         if not json_resp["data"]:
             raise KoolnovaError(
@@ -129,7 +128,7 @@ class KoolnovaAPIRestClient:
                 + "Or perhaps API has changed :(."
             )
 
-        #_LOGGER.debug("Réponse brute  : %s", json_resp)
+        #_LOGGER.debug("Raw response: %s", json_resp)
 
         if not json_resp["data"]:
             raise KoolnovaError(
@@ -141,9 +140,9 @@ class KoolnovaAPIRestClient:
             _LOGGER.debug("Room Name : %s", room["name"])
             _LOGGER.debug("Room Room_actual_temp : %s", room["temperature"])
             _LOGGER.debug("Topic Info : %s", room.get("topic_info", {}))
-            # Récupérer l'id de topic_info
+            # Retrieve the id from topic_info
             topic_id = room.get("topic_info", {}).get("id", "Unknown")
-            # Incluir toda la información de topic_info para acceder a RSSI, online, sync
+            # Include all topic_info for access to RSSI, online status, and sync
             topic_info = room.get("topic_info", {})
 
             rooms.append({
@@ -155,7 +154,7 @@ class KoolnovaAPIRestClient:
                 "Room_setpoint_temp": room["setpoint_temperature"],
                 "Room_speed": room["speed"],
                 "Topic_id": topic_id,
-                "topic_info": topic_info  # AÑADIDO: Toda la información de conectividad
+                "topic_info": topic_info  # ADDED: Connectivity information
             })
 
         return rooms
@@ -213,58 +212,6 @@ class KoolnovaAPIRestClient:
     def search_hub_ids(self) -> List[str]:
         """Return list of hub ids."""
         return self.search_all_ids().get("hub", [])
-
-    def get_pool_measure_latest(self, koolnova_id: str) -> Dict[str, Any]:
-        """Return latest measures for a koolnova device.
-
-        Expected to call `/modules/{id}/NewResume` and convert the mocked
-        response into the structure used by the tests.
-        """
-        headers = COMMON_HEADERS.copy()
-        resp = self._get_session().rest_request("GET", f"modules/{koolnova_id}/NewResume", headers=headers)
-        json_resp = resp.json()
-
-        # If the API returned no data at all
-        if not json_resp:
-            raise KoolnovaError(
-                f"Error : No data received for koolnova {koolnova_id} by the API. "
-                + "You should test on koolnova official app and contact gokoolnova if it is not working."
-                + " Or perhaps API has changed :(.")
-
-        # If Current key is missing -> same as no data
-        if "Current" not in json_resp:
-            raise KoolnovaError(
-                f"Error : No data received for koolnova {koolnova_id} by the API. "
-                + "You should test on koolnova official app and contact gokoolnova if it is not working."
-                + " Or perhaps API has changed :(.")
-
-        current = json_resp.get("Current")
-        # If Current exists but contains no value (hibernation) -> specific message
-        if current == "" or current is None:
-            raise KoolnovaError(
-                f"Error : No measure found for koolnova {koolnova_id} by the API."
-                + " Your koolnova is probably not calibrated or in Winter mode."
-                + " You should deactive the integration until you resolve the problem via the koolnova official app. "
-            )
-
-        date_time = parse(current.get("DateTime"))
-        temperature = current.get("Temperature")
-        red_ox = current.get("OxydoReductionPotentiel", {}).get("Value")
-        chlorine = current.get("Desinfectant", {}).get("Value")
-        ph = current.get("PH", {}).get("Value")
-        battery = current.get("Battery", {}).get("Deviation")
-        # tests expect battery as percentage (e.g. 0.75 -> 75)
-        if battery is not None:
-            battery = int(round(battery * 100))
-
-        return {
-            "date_time": date_time,
-            "temperature": temperature,
-            "red_ox": red_ox,
-            "chlorine": chlorine,
-            "ph": ph,
-            "battery": battery,
-        }
 
     def get_hub_state(self, hub_id: str) -> Dict[str, Any]:
         headers = COMMON_HEADERS.copy()

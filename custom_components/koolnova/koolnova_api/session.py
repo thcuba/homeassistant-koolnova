@@ -34,15 +34,15 @@ SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
 
 
 class KoolnovaClientSession(Session):
-    """HTTP session manager for Koolnova api.
+    """HTTP session manager for the Koolnova API.
 
-    This session object allows to manage the authentication
-    in the API using a token.
+    This session object manages authentication using a bearer token
+    and provides robust request handling.
 
     Features:
-    - Retry policy with exponential backoff on rest_request
-    - Automatic session refresh on 401
-    - Session heartbeat to prevent token expiry
+    - Retry policy with exponential backoff for resilience.
+    - Automatic session refresh on 401 (Unauthorized) errors.
+    - Session heartbeat to prevent token expiration.
     """
 
     host: str = KOOLNOVA_API_URL
@@ -53,8 +53,8 @@ class KoolnovaClientSession(Session):
         """Initialize and authenticate.
 
         Args:
-            username: the flipr registered user
-            password: the flipr user's password
+            username: the koolnova registered user
+            password: the koolnova user's password
             email: optional email associated to the account
             max_retries: number of retry attempts for rest_request
             retry_backoff: base delay for exponential backoff
@@ -70,7 +70,7 @@ class KoolnovaClientSession(Session):
         _LOGGER.debug("Starting authentication for username '%s' (email: %s)", username, email)
 
         # Build payload: prefer explicit email param; if not provided but username
-        # looks like an email address, send it as 'email' as well (matches web app)
+        # looks like an email address, send it as 'email' as well.
         if email:
             payload = {"email": email, "password": password}
         elif username and "@" in username:
@@ -84,7 +84,7 @@ class KoolnovaClientSession(Session):
         headers_token = {
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
-            "accept-language": "fr",
+            "accept-language": "en",
             "origin": "https://app.koolnova.com",
             "referer": "https://app.koolnova.com/",
             "cache-control": "no-cache",
