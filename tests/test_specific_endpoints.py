@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para probar endpoints específicos de reinicio y explorar redirecciones
+Script to test specific restart endpoints and explore redirects.
 """
 
 import subprocess
@@ -8,23 +8,23 @@ import json
 import time
 
 def test_endpoint_full(url: str, method: str = "GET") -> dict:
-    """Prueba un endpoint y devuelve información completa incluyendo headers de redirección."""
+    """Test an endpoint and return full information including redirect headers."""
     try:
         cmd = [
-            "curl", "-s", "-I", "-X", method,  # -I para headers, -X para método
+            "curl", "-s", "-I", "-X", method,  # -I for headers, -X for method
             "-H", "User-Agent: Mozilla/5.0",
             "-H", "accept: application/json, text/plain, */*",
             "-H", "accept-language: fr",
             "-H", "origin: https://app.koolnova.com",
             "-H", "referer: https://app.koolnova.com/",
-            "-L",  # Seguir redirecciones
+            "-L",  # Follow redirects
             "-m", "10",
             url
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
 
-        # Parsear respuesta
+        # Parse response
         response_lines = result.stdout.strip().split('\n')
         status_line = response_lines[0] if response_lines else ""
         headers = {}
@@ -52,14 +52,14 @@ def test_endpoint_full(url: str, method: str = "GET") -> dict:
         }
 
 def main():
-    """Prueba endpoints específicos y explora redirecciones."""
+    """Test specific endpoints and explore redirects."""
 
-    print("🔬 PRUEBA DE ENDPOINTS ESPECÍFICOS Y REDIRECCIONES")
+    print("🔬 TEST OF SPECIFIC ENDPOINTS AND REDIRECTS")
     print("=" * 70)
 
-    # Endpoints específicos para probar
+    # Specific endpoints to test
     specific_endpoints = [
-        # Topics específicos (ya que sabemos que /topics/ existe)
+        # Specific topics (since we know /topics/ exists)
         ("topics/reboot", "GET"),
         ("topics/reboot", "POST"),
         ("topics/restart", "GET"),
@@ -69,18 +69,18 @@ def main():
         ("topics/reload", "GET"),
         ("topics/reload", "POST"),
 
-        # Más variaciones
+        # More variations
         ("topics/control", "GET"),
         ("topics/power", "GET"),
         ("topics/manage", "GET"),
         ("topics/admin", "GET"),
 
-        # Proyectos
+        # Projects
         ("projects/restart", "GET"),
         ("projects/reset", "GET"),
         ("projects/reconnect", "GET"),
 
-        # Admin con diferentes métodos
+        # Admin with different methods
         ("admin/", "GET"),
         ("admin/", "POST"),
         ("admin/restart", "GET"),
@@ -88,7 +88,7 @@ def main():
         ("admin/login/", "GET"),
         ("admin/login/", "POST"),
 
-        # Más admin
+        # More admin
         ("admin/auth/", "GET"),
         ("admin/logout/", "GET"),
         ("admin/password_change/", "GET"),
@@ -107,7 +107,7 @@ def main():
         ("system/control", "GET"),
         ("system/manage", "GET"),
 
-        # Control directo
+        # Direct control
         ("control/", "GET"),
         ("control/system", "GET"),
         ("control/restart", "POST"),
@@ -129,26 +129,26 @@ def main():
     base_url = "https://api.koolnova.com/"
     all_results = []
 
-    print(f"Probando {len(specific_endpoints)} endpoints específicos...")
+    print(f"Testing {len(specific_endpoints)} specific endpoints...")
     print()
 
     for i, (endpoint, method) in enumerate(specific_endpoints, 1):
         full_url = base_url + endpoint
-        print("2d", end="")
+        print(".", end="", flush=True)
 
         result = test_endpoint_full(full_url, method)
         result["endpoint"] = endpoint
 
         all_results.append(result)
 
-        # Pequeña pausa
+        # Small pause
         time.sleep(0.2)
 
     print("\n" + "="*70)
-    print("📊 ANÁLISIS DE RESULTADOS")
+    print("📊 RESULTS ANALYSIS")
     print("="*70)
 
-    # Clasificar resultados
+    # Classify results
     redirects_302 = []
     not_found_404 = []
     unauthorized_401 = []
@@ -168,63 +168,63 @@ def main():
         else:
             other_responses.append((endpoint, method, code))
 
-    # Mostrar resultados
-    print(f"🔄 REDIRECCIONES 302 (posiblemente admin): {len(redirects_302)}")
+    # Show results
+    print(f"🔄 302 REDIRECTS (possibly admin): {len(redirects_302)}")
     for endpoint, method, location in redirects_302:
         print(f"   {method} {endpoint} → {location}")
 
-    print(f"\n✅ AUTORIZACIÓN REQUERIDA 401: {len(unauthorized_401)}")
+    print(f"\n✅ 401 AUTHORIZATION REQUIRED: {len(unauthorized_401)}")
     for endpoint, method in unauthorized_401:
         print(f"   {method} {endpoint}")
 
-    print(f"\n❌ NO ENCONTRADO 404: {len(not_found_404)}")
+    print(f"\n❌ 404 NOT FOUND: {len(not_found_404)}")
     for endpoint, method in not_found_404:
         print(f"   {method} {endpoint}")
 
     if other_responses:
-        print(f"\n🤔 OTRAS RESPUESTAS: {len(other_responses)}")
+        print(f"\n🤔 OTHER RESPONSES: {len(other_responses)}")
         for endpoint, method, code in other_responses:
             print(f"   {method} {endpoint} → {code}")
 
-    # Análisis especial de redirecciones admin
-    print("\n🎯 ANÁLISIS DE REDIRECCIONES ADMIN")
+    # Special analysis of admin redirects
+    print("\n🎯 ADMIN REDIRECTS ANALYSIS")
     print("-" * 40)
 
     admin_redirects = [r for r in redirects_302 if "admin" in r[0]]
     if admin_redirects:
-        print("Redirecciones admin encontradas:")
+        print("Admin redirects found:")
         for endpoint, method, location in admin_redirects:
             print(f"   {method} {endpoint}")
-            print(f"   → Redirige a: {location}")
+            print(f"   → Redirects to: {location}")
 
-            # Verificar si es login de Django
+            # Check if it's Django admin login
             if "login" in location or "admin" in location:
-                print("   💡 Posiblemente login de administración Django")
+                print("   💡 Possibly Django administration login")
             print()
     else:
-        print("No se encontraron redirecciones admin específicas")
+        print("No specific admin redirects found")
 
-    # Guardar resultados detallados
+    # Save detailed results
     with open('tests/specific_endpoints_results.json', 'w') as f:
         json.dump(all_results, f, indent=2, ensure_ascii=False)
 
-    print(f"\n📄 Resultados detallados guardados en: tests/specific_endpoints_results.json")
+    print(f"\n📄 Detailed results saved to: tests/specific_endpoints_results.json")
 
-    # Conclusiones
-    print("\n🎯 CONCLUSIONES:")
+    # Conclusions
+    print("\n🎯 CONCLUSIONS:")
     print("-" * 40)
 
     if unauthorized_401:
-        print(f"✅ {len(unauthorized_401)} endpoints requieren autenticación (posiblemente existen)")
+        print(f"✅ {len(unauthorized_401)} endpoints require authentication (possibly exist)")
 
     if redirects_302:
-        print(f"🔄 {len(redirects_302)} endpoints redirigen (posiblemente a login admin)")
+        print(f"🔄 {len(redirects_302)} endpoints redirect (possibly to admin login)")
 
     if not_found_404:
-        print(f"❌ {len(not_found_404)} endpoints no existen")
+        print(f"❌ {len(not_found_404)} endpoints do not exist")
 
-    print("\n💡 Los endpoints que requieren autenticación podrían existir")
-    print("   y funcionar con credenciales válidas de administrador.")
+    print("\n💡 Endpoints that require authentication could exist")
+    print("   and function with valid administrator credentials.")
 
 if __name__ == "__main__":
     main()

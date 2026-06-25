@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para probar endpoints de reinicio/reconexión sin autenticación
+Script to test restart/reconnection endpoints without authentication.
 """
 
 import subprocess
@@ -9,7 +9,7 @@ import time
 from typing import Dict, List
 
 def test_endpoint(url: str) -> str:
-    """Prueba un endpoint y devuelve el código HTTP."""
+    """Test an endpoint and return the HTTP code."""
     try:
         cmd = [
             "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
@@ -18,7 +18,7 @@ def test_endpoint(url: str) -> str:
             "-H", "accept-language: fr",
             "-H", "origin: https://app.koolnova.com",
             "-H", "referer: https://app.koolnova.com/",
-            "-m", "10",  # timeout 10 segundos
+            "-m", "10",  # 10 second timeout
             url
         ]
 
@@ -28,33 +28,33 @@ def test_endpoint(url: str) -> str:
         return f"ERROR: {str(e)}"
 
 def classify_response(code: str) -> str:
-    """Clasifica la respuesta HTTP."""
+    """Classify the HTTP response."""
     if code == "401":
-        return "✅ EXISTE (requiere auth)"
+        return "✅ EXISTS (requires auth)"
     elif code == "403":
-        return "✅ EXISTE (prohibido)"
+        return "✅ EXISTS (forbidden)"
     elif code == "404":
-        return "❌ NO EXISTE"
+        return "❌ DOES NOT EXIST"
     elif code == "405":
-        return "✅ EXISTE (método no permitido)"
+        return "✅ EXISTS (method not allowed)"
     elif code.startswith("ERROR"):
         return f"⚠️ ERROR: {code}"
     else:
-        return f"🤔 OTRO: {code}"
+        return f"🤔 OTHER: {code}"
 
 def main():
-    """Prueba todos los endpoints candidatos de reinicio/reconexión."""
+    """Test all candidate restart/reconnection endpoints."""
 
-    print("🔬 PRUEBA DE ENDPOINTS DE REINICIO/RECONEXIÓN")
+    print("🔬 TEST OF RESTART/RECONNECTION ENDPOINTS")
     print("=" * 60)
-    print("Patrón establecido:")
-    print("  401 = ✅ Endpoint existe pero requiere autenticación")
-    print("  404 = ❌ Endpoint no existe")
+    print("Established pattern:")
+    print("  401 = ✅ Endpoint exists but requires authentication")
+    print("  404 = ❌ Endpoint does not exist")
     print()
 
-    # Endpoints candidatos organizados por categoría
+    # Candidate endpoints organized by category
     endpoints_by_category = {
-        "🔄 HUB/CONTROLADORA": [
+        "🔄 HUB/CONTROLLER": [
             "hub/123/restart",
             "hub/123/reboot",
             "hub/123/reset",
@@ -62,7 +62,7 @@ def main():
             "hub/reboot",
             "hub/reset",
         ],
-        "📡 MÓDULOS/DISPOSITIVOS": [
+        "📡 MODULES/DEVICES": [
             "modules/123/reboot",
             "modules/123/reset",
             "modules/123/restart",
@@ -71,7 +71,7 @@ def main():
             "devices/123/restart",
             "devices/123/reconnect",
         ],
-        "🏠 TOPICS/PROYECTOS": [
+        "🏠 TOPICS/PROJECTS": [
             "topics/123/reconnect",
             "topics/123/reset",
             "topics/123/restart",
@@ -80,7 +80,7 @@ def main():
             "projects/123/reset",
             "projects/123/restart",
         ],
-        "⚙️ SISTEMA": [
+        "⚙️ SYSTEM": [
             "system/restart",
             "system/reset",
             "system/reboot",
@@ -89,7 +89,7 @@ def main():
             "system/mqtt/reconnect",
             "system/mqtt/reset",
         ],
-        "🌐 CONEXIÓN/RED": [
+        "🌐 CONNECTION/NETWORK": [
             "network/reset",
             "network/restart",
             "network/reconnect",
@@ -98,14 +98,14 @@ def main():
             "wifi/reset",
             "wifi/reconnect",
         ],
-        "🔧 CONFIGURACIÓN": [
+        "🔧 CONFIGURATION": [
             "config/reset",
             "config/restart",
             "config/reload",
             "settings/reset",
             "profile/reset",
         ],
-        "📊 OTROS POSIBLES": [
+        "📊 OTHER POSSIBLE": [
             "admin/restart",
             "control/restart",
             "server/restart",
@@ -124,7 +124,7 @@ def main():
         category_results = {}
         for endpoint in endpoints:
             full_url = base_url + endpoint
-            print(f"🔍 Probando: {endpoint}", end=" ... ")
+            print(f"🔍 Testing: {endpoint}", end=" ... ")
 
             code = test_endpoint(full_url)
             classification = classify_response(code)
@@ -135,21 +135,21 @@ def main():
                 "classification": classification
             }
 
-            # Pequeña pausa para no sobrecargar
+            # Small pause to avoid overloading
             time.sleep(0.5)
 
         all_results[category] = category_results
 
-    # RESUMEN FINAL
+    # FINAL SUMMARY
     print("\n" + "="*60)
-    print("📊 RESUMEN FINAL - ENDPOINTS QUE EXISTEN")
+    print("📊 FINAL SUMMARY - ENDPOINTS THAT EXIST")
     print("="*60)
 
     existing_endpoints = []
     for category, results in all_results.items():
         category_existing = []
         for endpoint, data in results.items():
-            if "EXISTE" in data["classification"]:
+            if "EXISTS" in data["classification"]:
                 category_existing.append(endpoint)
 
         if category_existing:
@@ -159,22 +159,22 @@ def main():
 
             existing_endpoints.extend(category_existing)
 
-    print(f"\n🎯 TOTAL ENDPOINTS CANDIDATOS ENCONTRADOS: {len(existing_endpoints)}")
+    print(f"\n🎯 TOTAL CANDIDATE ENDPOINTS FOUND: {len(existing_endpoints)}")
 
     if existing_endpoints:
-        print("\n💡 PRÓXIMOS PASOS:")
-        print("1. Probar estos endpoints con credenciales válidas")
-        print("2. Verificar qué métodos HTTP aceptan (GET, POST, PUT, PATCH)")
-        print("3. Implementar los que funcionen en la integración")
-        print("4. Documentar parámetros requeridos")
+        print("\n💡 NEXT STEPS:")
+        print("1. Test these endpoints with valid credentials")
+        print("2. Verify which HTTP methods they accept (GET, POST, PUT, PATCH)")
+        print("3. Implement those that work in the integration")
+        print("4. Document required parameters")
 
-        # Guardar resultados en JSON
+        # Save results in JSON
         with open('tests/restart_endpoints_results.json', 'w') as f:
             json.dump(all_results, f, indent=2, ensure_ascii=False)
 
-        print("\n📄 Resultados guardados en: tests/restart_endpoints_results.json")
+        print("\n📄 Results saved to: tests/restart_endpoints_results.json")
     else:
-        print("\n❌ No se encontraron endpoints candidatos")
+        print("\n❌ No candidate endpoints found")
 
 if __name__ == "__main__":
     main()

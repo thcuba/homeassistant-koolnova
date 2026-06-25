@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para probar endpoints alternativos de reinicio/reconexión
+Script to test alternative restart/reconnection endpoints.
 """
 
 import subprocess
@@ -8,7 +8,7 @@ import json
 import time
 
 def test_endpoint(url: str) -> str:
-    """Prueba un endpoint y devuelve el código HTTP."""
+    """Test an endpoint and return the HTTP code."""
     try:
         cmd = [
             "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
@@ -27,29 +27,29 @@ def test_endpoint(url: str) -> str:
         return f"ERROR: {str(e)}"
 
 def classify_response(code: str) -> str:
-    """Clasifica la respuesta HTTP."""
+    """Classify the HTTP response."""
     if code == "401":
-        return "✅ EXISTE (requiere auth)"
+        return "✅ EXISTS (requires auth)"
     elif code == "403":
-        return "✅ EXISTE (prohibido)"
+        return "✅ EXISTS (forbidden)"
     elif code == "404":
-        return "❌ NO EXISTE"
+        return "❌ DOES NOT EXIST"
     elif code == "405":
-        return "✅ EXISTE (método no permitido)"
+        return "✅ EXISTS (method not allowed)"
     elif code == "200":
-        return "✅ EXISTE (acceso público)"
+        return "✅ EXISTS (public access)"
     elif code.startswith("ERROR"):
         return f"⚠️ ERROR: {code}"
     else:
-        return f"🤔 OTRO: {code}"
+        return f"🤔 OTHER: {code}"
 
 def main():
-    """Prueba endpoints alternativos de reinicio/reconexión."""
+    """Test alternative restart/reconnection endpoints."""
 
-    print("🔬 PRUEBA DE ENDPOINTS ALTERNATIVOS DE REINICIO/RECONEXIÓN")
+    print("🔬 TEST OF ALTERNATIVE RESTART/RECONNECTION ENDPOINTS")
     print("=" * 70)
 
-    # Endpoints alternativos basados en patrones comunes
+    # Alternative endpoints based on common patterns
     alternative_endpoints = {
         "🔄 CONTROL/POWER": [
             "control/restart", "control/reset", "control/reboot",
@@ -104,7 +104,7 @@ def main():
         category_results = {}
         for endpoint in endpoints:
             full_url = base_url + endpoint
-            print(f"🔍 Probando: {endpoint}", end=" ... ")
+            print(f"🔍 Testing: {endpoint}", end=" ... ")
 
             code = test_endpoint(full_url)
             classification = classify_response(code)
@@ -115,20 +115,20 @@ def main():
                 "classification": classification
             }
 
-            time.sleep(0.3)  # Pausa más corta
+            time.sleep(0.3)  # Short pause
 
         all_results[category] = category_results
 
-    # RESUMEN FINAL
+    # FINAL SUMMARY
     print("\n" + "="*70)
-    print("📊 RESUMEN FINAL - ENDPOINTS ALTERNATIVOS")
+    print("📊 FINAL SUMMARY - ALTERNATIVE ENDPOINTS")
     print("="*70)
 
     existing_endpoints = []
     for category, results in all_results.items():
         category_existing = []
         for endpoint, data in results.items():
-            if "EXISTE" in data["classification"]:
+            if "EXISTS" in data["classification"]:
                 category_existing.append(endpoint)
 
         if category_existing:
@@ -138,23 +138,23 @@ def main():
 
             existing_endpoints.extend(category_existing)
 
-    print(f"\n🎯 TOTAL ENDPOINTS CANDIDATOS ENCONTRADOS: {len(existing_endpoints)}")
+    print(f"\n🎯 TOTAL CANDIDATE ENDPOINTS FOUND: {len(existing_endpoints)}")
 
     if existing_endpoints:
-        print("\n💡 PRÓXIMOS PASOS:")
-        print("1. Probar estos endpoints con credenciales válidas")
-        print("2. Verificar métodos HTTP (GET, POST, PUT, PATCH)")
-        print("3. Verificar si requieren parámetros adicionales")
-        print("4. Implementar los que funcionen")
+        print("\n💡 NEXT STEPS:")
+        print("1. Test these endpoints with valid credentials")
+        print("2. Verify HTTP methods (GET, POST, PUT, PATCH)")
+        print("3. Verify if additional parameters are required")
+        print("4. Implement the ones that work")
 
-        # Guardar resultados
+        # Save results
         with open('tests/alternative_endpoints_results.json', 'w') as f:
             json.dump(all_results, f, indent=2, ensure_ascii=False)
 
-        print("\n📄 Resultados guardados en: tests/alternative_endpoints_results.json")
+        print("\n📄 Results saved to: tests/alternative_endpoints_results.json")
     else:
-        print("\n❌ No se encontraron endpoints candidatos alternativos")
-        print("💡 La API de Koolnova parece ser más básica de lo esperado")
+        print("\n❌ No candidate endpoints found")
+        print("💡 Koolnova API seems to be more basic than expected")
 
 if __name__ == "__main__":
     main()

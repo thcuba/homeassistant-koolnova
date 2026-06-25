@@ -1,69 +1,69 @@
 #!/usr/bin/env python3
 """
-Script para investigar métodos API adicionales de Koolnova
+Script to investigate additional Koolnova API methods.
 """
 
 import json
 import sys
 import os
 
-# Agregar el directorio del proyecto al path
+# Add the project directory to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from koolnova_api.client import KoolnovaAPIRestClient
 from koolnova_api.exceptions import KoolnovaError
 
 def test_api_methods():
-    """Prueba métodos API adicionales con credenciales"""
+    """Test additional API methods with credentials."""
 
-    # Credenciales desde variables de entorno
+    # Credentials from environment variables
     username = os.getenv('KOOLNOVA_USERNAME')
     password = os.getenv('KOOLNOVA_PASSWORD')
-    email = os.getenv('KOOLNOVA_EMAIL', username)  # Email por defecto es el username si es email
+    email = os.getenv('KOOLNOVA_EMAIL', username)  # Default email is username if it's an email
 
     if not username or not password:
-        print("❌ ERROR: Credenciales no proporcionadas")
-        print("\n💡 Para usar este script, establece las variables de entorno:")
-        print("   export KOOLNOVA_USERNAME='tu_usuario_o_email'")
-        print("   export KOOLNOVA_PASSWORD='tu_password'")
-        print("   export KOOLNOVA_EMAIL='tu_email'  # opcional si username es email")
-        print("\n   Ejemplo:")
-        print("   export KOOLNOVA_USERNAME='usuario@ejemplo.com'")
-        print("   export KOOLNOVA_PASSWORD='mipassword'")
+        print("❌ ERROR: Credentials not provided")
+        print("\n💡 To use this script, set environment variables:")
+        print("   export KOOLNOVA_USERNAME='your_username_or_email'")
+        print("   export KOOLNOVA_PASSWORD='your_password'")
+        print("   export KOOLNOVA_EMAIL='your_email'  # optional if username is email")
+        print("\n   Example:")
+        print("   export KOOLNOVA_USERNAME='user@example.com'")
+        print("   export KOOLNOVA_PASSWORD='mypassword'")
         print("   python test_api_methods.py")
         return
 
-    print("🔐 Intentando autenticación en Koolnova API...")
-    print(f"Usuario: {username}")
+    print("🔐 Attempting authentication with Koolnova API...")
+    print(f"Username: {username}")
     print(f"Email: {email}")
 
     try:
         client = KoolnovaAPIRestClient(username, password, email)
 
-        # Probar métodos conocidos primero
-        print("\n✅ Probando métodos ya implementados:")
+        # Test already implemented methods first
+        print("\n✅ Testing already implemented methods:")
 
         # Test projects
         try:
             projects = client.get_project()
-            print(f"📋 Projects: {len(projects)} encontrados")
+            print(f"📋 Projects: {len(projects)} found")
             if projects:
-                print(f"   Primer proyecto: {projects[0].get('Project_Name', 'N/A')}")
+                print(f"   First project: {projects[0].get('Project_Name', 'N/A')}")
         except Exception as e:
             print(f"   ❌ Projects error: {e}")
 
         # Test sensors
         try:
             sensors = client.get_sensors()
-            print(f"🌡️ Sensors: {len(sensors)} encontrados")
+            print(f"🌡️ Sensors: {len(sensors)} found")
             if sensors:
-                print(f"   Primera zona: {sensors[0].get('Room_Name', 'N/A')}")
+                print(f"   First zone: {sensors[0].get('Room_Name', 'N/A')}")
         except Exception as e:
             print(f"   ❌ Sensors error: {e}")
 
-        print("\n🔍 Probando métodos adicionales descubiertos:")
+        print("\n🔍 Testing additional discovered methods:")
 
-        # Lista de endpoints adicionales para probar
+        # List of additional endpoints to test
         additional_endpoints = [
             'notifications',
             'devices',
@@ -72,43 +72,43 @@ def test_api_methods():
 
         for endpoint in additional_endpoints:
             try:
-                print(f"\n📡 Probando /{endpoint}/")
+                print(f"\n📡 Testing /{endpoint}/")
                 response = client._get_session().rest_request("GET", endpoint + "/")
-                print(f"   ✅ Respuesta: {response.status_code}")
+                print(f"   ✅ Response: {response.status_code}")
                 if response.status_code == 200:
                     data = response.json()
-                    print(f"   📊 Datos recibidos: {type(data)}")
+                    print(f"   📊 Received data: {type(data)}")
                     if isinstance(data, dict):
-                        print(f"   🔑 Keys principales: {list(data.keys())}")
-                        # Mostrar detalles de paginación
+                        print(f"   🔑 Primary keys: {list(data.keys())}")
+                        # Show pagination details
                         if 'total' in data:
-                            print(f"   📄 Total elementos: {data['total']}")
+                            print(f"   📄 Total items: {data['total']}")
                         if 'data' in data and isinstance(data['data'], list):
-                            print(f"   📝 Elementos en página: {len(data['data'])}")
+                            print(f"   📝 Items on page: {len(data['data'])}")
                             if data['data'] and isinstance(data['data'][0], dict):
-                                print(f"   🔍 Keys del primer elemento: {list(data['data'][0].keys())}")
-                                # Mostrar algunos datos de ejemplo
+                                print(f"   🔍 Keys of first item: {list(data['data'][0].keys())}")
+                                # Show example data
                                 first_item = data['data'][0]
-                                print(f"   💡 Ejemplo - {endpoint}: {first_item}")
+                                print(f"   💡 Example - {endpoint}: {first_item}")
                     elif isinstance(data, list) and data:
-                        print(f"   📝 Primer elemento keys: {list(data[0].keys()) if isinstance(data[0], dict) else 'No dict'}")
-                        print(f"   📊 Total elementos: {len(data)}")
+                        print(f"   📝 First item keys: {list(data[0].keys()) if isinstance(data[0], dict) else 'No dict'}")
+                        print(f"   📊 Total items: {len(data)}")
             except Exception as e:
-                print(f"   ❌ Error en /{endpoint}/: {e}")
+                print(f"   ❌ Error on /{endpoint}/: {e}")
 
-        # Probar métodos relacionados con módulos existentes
-        print("\n🔧 Probando métodos relacionados con módulos existentes:")
+        # Test methods related to existing modules
+        print("\n🔧 Testing methods related to existing modules:")
 
-        # Obtener IDs de módulos primero
+        # Get module IDs first
         try:
             module_ids = client.search_all_ids()
-            print(f"📟 IDs encontrados: {module_ids}")
+            print(f"📟 IDs found: {module_ids}")
 
             if module_ids['koolnova']:
                 koolnova_id = module_ids['koolnova'][0]
-                print(f"🎯 Probando con Koolnova ID: {koolnova_id}")
+                print(f"🎯 Testing with Koolnova ID: {koolnova_id}")
 
-                # Probar endpoints relacionados con módulos
+                # Test endpoints related to modules
                 module_endpoints = [
                     f'modules/{koolnova_id}/history',
                     f'modules/{koolnova_id}/logs',
@@ -119,24 +119,24 @@ def test_api_methods():
 
                 for endpoint in module_endpoints:
                     try:
-                        print(f"   📡 Probando /{endpoint}/")
+                        print(f"   📡 Testing /{endpoint}/")
                         response = client._get_session().rest_request("GET", endpoint)
-                        print(f"      ✅ Respuesta: {response.status_code}")
+                        print(f"      ✅ Response: {response.status_code}")
                         if response.status_code == 200:
                             data = response.json()
-                            print(f"      📊 Tipo de datos: {type(data)}")
+                            print(f"      📊 Data type: {type(data)}")
                     except Exception as e:
                         print(f"      ❌ Error: {e}")
 
         except Exception as e:
-            print(f"❌ Error obteniendo IDs de módulos: {e}")
+            print(f"❌ Error obtaining module IDs: {e}")
 
     except Exception as e:
-        print(f"❌ Error de autenticación: {e}")
-        print("\n💡 Para usar este script:")
-        print("   export KOOLNOVA_USERNAME='tu_usuario'")
-        print("   export KOOLNOVA_PASSWORD='tu_password'")
-        print("   export KOOLNOVA_EMAIL='tu_email'")
+        print(f"❌ Authentication error: {e}")
+        print("\n💡 To use this script:")
+        print("   export KOOLNOVA_USERNAME='your_username'")
+        print("   export KOOLNOVA_PASSWORD='your_password'")
+        print("   export KOOLNOVA_EMAIL='your_email'")
         print("   python test_api_methods.py")
 
 if __name__ == "__main__":
