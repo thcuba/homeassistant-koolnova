@@ -1,7 +1,7 @@
 {
   "domain": "koolnova",
   "name": "Koolnova",
-  "codeowners": ["@luisgsluis"],
+  "codeowners": ["@thcuba", "@luisgsluis"],
   "config_flow": true,
   "dependencies": [],
   "requirements": ["requests", "python-dateutil"],
