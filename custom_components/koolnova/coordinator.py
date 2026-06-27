@@ -46,7 +46,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             password=config_data["password"]
         )
         self.config_entry = config_entry
-        self.data = {"projects": [], "sensors": []}
+        self.data = {"projects": [], "sensors": [], "hubs": []}
 
         # Counter for periodic project updates
         self._project_update_counter = 0
@@ -148,17 +148,16 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 except:
                     pass
 
+                _LOGGER.debug("Successfully fetched %d projects, %d sensors and %d hubs",
+                             len(projects), len(sensors), len(hubs))
                 return {"projects": projects, "sensors": sensors, "hubs": hubs}
             except Exception as e:
                 _LOGGER.warning("Primary fetch failed, trying fallback: %s", e)
                 fallback_data = self._fetch_data_fallback()
                 if fallback_data:
+                    _LOGGER.info("Fallback fetch successful")
                     return fallback_data
                 raise
-
-            _LOGGER.debug("Successfully fetched %d projects and %d sensors",
-                         len(projects), len(sensors))
-            return {"projects": projects, "sensors": sensors}
         except KoolnovaError as err:
             _LOGGER.error("Koolnova API error: %s", err)
             raise UpdateFailed(f"Error communicating with Koolnova API: {err}")
@@ -180,8 +179,12 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 raise
 
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
-            # Keep existing projects data, only update sensors
-            return {"projects": self.data.get("projects", []), "sensors": sensors}
+            # Keep existing projects and hubs data, only update sensors
+            return {
+                "projects": self.data.get("projects", []),
+                "sensors": sensors,
+                "hubs": self.data.get("hubs", []),
+            }
         except KoolnovaError as err:
             _LOGGER.error("Koolnova API error fetching sensors: %s", err)
             raise UpdateFailed(f"Error communicating with Koolnova API: {err}")
@@ -238,7 +241,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         "entry_id": self.config_entry.entry_id,
                         "last_sync": result.get("projects", [{}])[0].get("last_sync") if result.get("projects") else None,
                         "projects_count": len(result.get("projects", [])),
-                        "sensors_count": len(result.get("sensors", []))
+                        "sensors_count": len(result.get("sensors", [])),
+                        "hubs_count": len(result.get("hubs", []))
                     })
                     
                     return result
@@ -255,7 +259,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         "timestamp": datetime.now().isoformat(),
                         "entry_id": self.config_entry.entry_id,
                         "last_sync": self.data.get("projects", [{}])[0].get("last_sync") if self.data.get("projects") else None,
-                        "sensors_count": len(result.get("sensors", []))
+                        "sensors_count": len(result.get("sensors", [])),
+                        "hubs_count": len(result.get("hubs", []))
                     })
                     
                     return result
@@ -273,7 +278,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     "entry_id": self.config_entry.entry_id,
                     "last_sync": result.get("projects", [{}])[0].get("last_sync") if result.get("projects") else None,
                     "projects_count": len(result.get("projects", [])),
-                    "sensors_count": len(result.get("sensors", []))
+                    "sensors_count": len(result.get("sensors", [])),
+                    "hubs_count": len(result.get("hubs", []))
                 })
                 
                 return result
