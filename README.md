@@ -49,7 +49,7 @@ For developers and advanced users, see the detailed docs:
 
 #### Available Options
 
-- **Update interval** – 30 – 3600 seconds
+- **Update interval** – 60 – 3600 seconds
 - **Project-level HVAC modes** – select available modes
 - **Zone-level HVAC modes** – select per-zone modes
 - **Temperature range** – configurable min / max values

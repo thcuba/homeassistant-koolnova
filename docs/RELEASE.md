@@ -19,7 +19,7 @@ This integration is HACS (Home Assistant Community Store) compatible:
 
 - **Type**: Integration
 - **Installation method**: GitHub release (standard GitHub releases)
-- **Repository URL**: https://github.com/luisgsluis/homeassistant-koolnova
+- **Repository URL**: https://github.com/thcuba/homeassistant-koolnova
 
 ### HACS Requirements
 - `manifest.json` with correct metadata
@@ -51,7 +51,12 @@ The `hacs.json` file MUST include the following fields:
 
 ## Changelog
 
-### v1.2.0 (Upcoming – Critical Fix)
+### v1.2.5
+- Maintenance release
+- Metadata synchronization and documentation updates
+- Internal consistency checks for HACS compliance
+
+### v1.2.0
 - 🚨 **CRITICAL FIX**: Resolved import conflict that caused 404 errors
 - ✅ Removed conflicting PyPI package `koolnova-api`
 - ✅ Renamed local module to `koolnova_api` (underscore)
