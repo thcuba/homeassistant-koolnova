@@ -47,7 +47,6 @@ homeassistant-koolnova/
 ├── tests/                          # Test suite
 ├── hacs.json                       # HACS configuration
 ├── icon.png                        # Integration icon
-├── manifest.json                   # Manifest in root
 └── README.md                       # Main documentation
 ```
 
@@ -86,7 +85,7 @@ homeassistant-koolnova/
      "homeassistant": "2024.12.0",
      "iot_class": "cloud_polling",
      "issue_tracker": "https://github.com/thcuba/homeassistant-koolnova/issues",
-     "requirements": ["requests", "python-dateutil"],
+     "requirements": ["requests"],
      "country": ["IT"]
    }
    ```

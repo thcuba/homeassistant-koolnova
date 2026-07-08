@@ -51,6 +51,6 @@ Conflict between the PyPI `koolnova-api` package (with hyphen) and the local mod
 - Reset integration: remove & reinstall.
 
 ## Support
-- **Issues** → https://github.com/luisgsluis/homeassistant‑koolnova/issues
+- **Issues** → https://github.com/thcuba/homeassistant-koolnova/issues
 - Include relevant logs.
 - Specify HA & integration versions.
