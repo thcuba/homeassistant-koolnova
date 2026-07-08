@@ -17,8 +17,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = []
 
-    # Single connectivity sensor for the whole system
-    entities.append(KoolnovaConnectivitySensor(coordinator, entry))
+    # Create a connectivity sensor for each project
+    if coordinator.data.get("projects"):
+        for project in coordinator.data["projects"]:
+            entities.append(KoolnovaConnectivitySensor(coordinator, entry, project))
+    else:
+        # Fallback for systems without projects (should not happen normally)
+        entities.append(KoolnovaConnectivitySensor(coordinator, entry))
 
     async_add_entities(entities, update_before_add=False)
 
@@ -30,20 +35,19 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_should_poll = False
 
-    def __init__(self, coordinator, config_entry):
+    def __init__(self, coordinator, config_entry, project=None):
         """Initialize the connectivity sensor."""
         self.coordinator = coordinator
         self.config_entry = config_entry
-        self._attr_unique_id = f"{config_entry.entry_id}_connectivity_status"
+        self._project = project
+        project_id = project.get("Topic_id", "global") if project else "global"
+        project_name = project.get("Project_Name", "System") if project else "System"
 
-        # Device info based on the first project or generic
-        project_id = "global"
-        if coordinator.data.get("projects"):
-            project_id = coordinator.data["projects"][0].get("Topic_id", "global")
+        self._attr_unique_id = f"{config_entry.entry_id}_connectivity_{project_id}"
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{project_id}")},
-            name="Koolnova System",
+            name=f"Koolnova {project_name}",
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
@@ -59,6 +63,9 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
     def is_on(self):
         """Return true if system is online."""
         sensors = self.coordinator.data.get("sensors", [])
+        if self._project:
+            sensors = [s for s in sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+
         if not sensors:
             return False
 
@@ -69,6 +76,9 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
     def extra_state_attributes(self):
         """Return connectivity attributes in English snake_case."""
         sensors = self.coordinator.data.get("sensors", [])
+        if self._project:
+            sensors = [s for s in sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+
         if not sensors:
             return {}
 

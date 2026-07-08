@@ -76,7 +76,7 @@ class KoolnovaProjectEntity(ClimateEntity):
         self.config_entry = config_entry
         self._project = project
 
-        self._attr_unique_id = f"{config_entry.entry_id}_project"
+        self._attr_unique_id = f"{config_entry.entry_id}_project_{project['Topic_id']}"
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE | 
             ClimateEntityFeature.FAN_MODE |
@@ -85,9 +85,10 @@ class KoolnovaProjectEntity(ClimateEntity):
             ClimateEntityFeature.TURN_OFF
         )
 
+        project_name = project.get("Project_Name", "System")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{project['Topic_id']}")},
-            name="Koolnova System",
+            name=f"Koolnova {project_name}",
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
@@ -147,7 +148,10 @@ class KoolnovaProjectEntity(ClimateEntity):
     @property
     def preset_mode(self):
         """Return most common zone HVAC mode among all zones."""
-        sensors = self.coordinator.data.get("sensors", [])
+        sensors = [
+            s for s in self.coordinator.data.get("sensors", [])
+            if s.get("Topic_id") == self._project.get("Topic_id")
+        ]
         if not sensors:
             return None
 
@@ -204,7 +208,10 @@ class KoolnovaProjectEntity(ClimateEntity):
     @property
     def target_temperature(self):
         """Return median of zones' target temperatures."""
-        sensors = self.coordinator.data.get("sensors", [])
+        sensors = [
+            s for s in self.coordinator.data.get("sensors", [])
+            if s.get("Topic_id") == self._project.get("Topic_id")
+        ]
         if not sensors:
             return None
 
@@ -221,7 +228,10 @@ class KoolnovaProjectEntity(ClimateEntity):
     @property
     def current_temperature(self):
         """Return average temperature of all zones, rounded to nearest 0.5."""
-        sensors = self.coordinator.data.get("sensors", [])
+        sensors = [
+            s for s in self.coordinator.data.get("sensors", [])
+            if s.get("Topic_id") == self._project.get("Topic_id")
+        ]
         if not sensors:
             return None
 
@@ -246,7 +256,10 @@ class KoolnovaProjectEntity(ClimateEntity):
     def extra_state_attributes(self):
         """Return extra state attributes."""
         self._update_project_data()
-        sensors = self.coordinator.data.get("sensors", [])
+        sensors = [
+            s for s in self.coordinator.data.get("sensors", [])
+            if s.get("Topic_id") == self._project.get("Topic_id")
+        ]
         sensors_count = len(sensors)
 
         # Get system connectivity data from sensors (more up-to-date)
@@ -352,7 +365,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         _LOGGER.info("Setting global fan mode to %s (speed: %s) for all zones", fan_mode, speed_code)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_fan_speed(speed_code)
+            result = await self.coordinator.async_update_all_sensors_fan_speed(
+                speed_code,
+                topic_id=self._project.get("Topic_id")
+            )
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -389,7 +405,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         _LOGGER.info("Setting global zone HVAC mode to %s (status: %s) for all zones", hvac_mode, status_code)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_status(status_code)
+            result = await self.coordinator.async_update_all_sensors_status(
+                status_code,
+                topic_id=self._project.get("Topic_id")
+            )
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -420,7 +439,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         _LOGGER.info("Setting global temperature to %s degrees for all zones", temp)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_temperature(temp)
+            result = await self.coordinator.async_update_all_sensors_temperature(
+                temp,
+                topic_id=self._project.get("Topic_id")
+            )
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -456,9 +478,15 @@ class KoolnovaZoneEntity(ClimateEntity):
         self._attr_should_poll = False
 
         project_id = sensor.get("Topic_id", "global")
+        project_name = "System"
+        for project in coordinator.data.get("projects", []):
+            if project.get("Topic_id") == project_id:
+                project_name = project.get("Project_Name", "System")
+                break
+
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{project_id}")},
-            name="Koolnova System",
+            name=f"Koolnova {project_name}",
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
@@ -559,8 +587,11 @@ class KoolnovaZoneEntity(ClimateEntity):
         """Return if entity is available."""
         self._update_sensor_data()
         project_online = False
-        if self.coordinator.data.get("projects"):
-            project_online = self.coordinator.data["projects"][0].get("is_online", False)
+        project_id = self._sensor.get("Topic_id")
+        for project in self.coordinator.data.get("projects", []):
+            if project.get("Topic_id") == project_id:
+                project_online = project.get("is_online", False)
+                break
         return self.coordinator.last_update_success and project_online
 
     @property
