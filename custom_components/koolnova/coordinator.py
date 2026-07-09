@@ -430,11 +430,18 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Error updating project %s: %s", topic_id, err)
             raise
 
-    async def async_update_all_sensors_temperature(self, temperature: float):
-        """Update temperature setpoint for ALL sensors in the project."""
+    async def async_update_all_sensors_temperature(self, temperature: float, topic_id: int = None):
+        """Update temperature setpoint for all sensors (optionally filtered by topic_id)."""
         try:
-            _LOGGER.info("Updating temperature to %s degrees for all sensors in project", temperature)
-            sensors_to_update = self.data.get("sensors", [])
+            target_msg = f"topic {topic_id}" if topic_id is not None else "all projects"
+            _LOGGER.info("Updating temperature to %s degrees for all sensors in %s", temperature, target_msg)
+
+            all_sensors = self.data.get("sensors", [])
+            if topic_id is not None:
+                sensors_to_update = [s for s in all_sensors if str(s.get("Topic_id")) == str(topic_id)]
+            else:
+                sensors_to_update = all_sensors
+
             updated_count = 0
             failed_count = 0
             
@@ -458,11 +465,18 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Error updating all sensors temperature: %s", err)
             raise
 
-    async def async_update_all_sensors_status(self, status_code: str):
-        """Update status for ALL sensors in the project."""
+    async def async_update_all_sensors_status(self, status_code: str, topic_id: int = None):
+        """Update status for all sensors (optionally filtered by topic_id)."""
         try:
-            _LOGGER.info("Updating status to %s for all sensors in project", status_code)
-            sensors_to_update = self.data.get("sensors", [])
+            target_msg = f"topic {topic_id}" if topic_id is not None else "all projects"
+            _LOGGER.info("Updating status to %s for all sensors in %s", status_code, target_msg)
+
+            all_sensors = self.data.get("sensors", [])
+            if topic_id is not None:
+                sensors_to_update = [s for s in all_sensors if str(s.get("Topic_id")) == str(topic_id)]
+            else:
+                sensors_to_update = all_sensors
+
             updated_count = 0
             failed_count = 0
             
@@ -486,11 +500,18 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Error updating all sensors status: %s", err)
             raise
 
-    async def async_update_all_sensors_fan_speed(self, speed_code: str):
-        """Update fan speed for ALL sensors in the project."""
+    async def async_update_all_sensors_fan_speed(self, speed_code: str, topic_id: int = None):
+        """Update fan speed for all sensors (optionally filtered by topic_id)."""
         try:
-            _LOGGER.info("Updating fan speed to %s for all sensors in project", speed_code)
-            sensors_to_update = self.data.get("sensors", [])
+            target_msg = f"topic {topic_id}" if topic_id is not None else "all projects"
+            _LOGGER.info("Updating fan speed to %s for all sensors in %s", speed_code, target_msg)
+
+            all_sensors = self.data.get("sensors", [])
+            if topic_id is not None:
+                sensors_to_update = [s for s in all_sensors if str(s.get("Topic_id")) == str(topic_id)]
+            else:
+                sensors_to_update = all_sensors
+
             updated_count = 0
             failed_count = 0
             
