@@ -76,7 +76,7 @@ class KoolnovaProjectEntity(ClimateEntity):
         self.config_entry = config_entry
         self._project = project
 
-        self._attr_unique_id = f"{config_entry.entry_id}_project"
+        self._attr_unique_id = f"{config_entry.entry_id}_project_{project['Topic_id']}"
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE | 
             ClimateEntityFeature.FAN_MODE |
@@ -87,7 +87,7 @@ class KoolnovaProjectEntity(ClimateEntity):
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{project['Topic_id']}")},
-            name="Koolnova System",
+            name=f"Koolnova {project['Project_Name']}",
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
@@ -146,8 +146,10 @@ class KoolnovaProjectEntity(ClimateEntity):
 
     @property
     def preset_mode(self):
-        """Return most common zone HVAC mode among all zones."""
-        sensors = self.coordinator.data.get("sensors", [])
+        """Return most common zone HVAC mode among all zones in this project."""
+        all_sensors = self.coordinator.data.get("sensors", [])
+        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+
         if not sensors:
             return None
 
@@ -203,8 +205,10 @@ class KoolnovaProjectEntity(ClimateEntity):
 
     @property
     def target_temperature(self):
-        """Return median of zones' target temperatures."""
-        sensors = self.coordinator.data.get("sensors", [])
+        """Return median of zones' target temperatures for this project."""
+        all_sensors = self.coordinator.data.get("sensors", [])
+        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+
         if not sensors:
             return None
 
@@ -220,8 +224,10 @@ class KoolnovaProjectEntity(ClimateEntity):
 
     @property
     def current_temperature(self):
-        """Return average temperature of all zones, rounded to nearest 0.5."""
-        sensors = self.coordinator.data.get("sensors", [])
+        """Return average temperature of all zones in this project, rounded to nearest 0.5."""
+        all_sensors = self.coordinator.data.get("sensors", [])
+        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+
         if not sensors:
             return None
 
@@ -246,7 +252,9 @@ class KoolnovaProjectEntity(ClimateEntity):
     def extra_state_attributes(self):
         """Return extra state attributes."""
         self._update_project_data()
-        sensors = self.coordinator.data.get("sensors", [])
+        topic_id = self._project.get("Topic_id")
+        all_sensors = self.coordinator.data.get("sensors", [])
+        sensors = [s for s in all_sensors if s.get("Topic_id") == topic_id]
         sensors_count = len(sensors)
 
         # Get system connectivity data from sensors (more up-to-date)
@@ -336,7 +344,7 @@ class KoolnovaProjectEntity(ClimateEntity):
             await self.async_set_hvac_mode(HVACMode.OFF)
 
     async def async_set_fan_mode(self, fan_mode):
-        """Set global fan mode for ALL zones."""
+        """Set global fan mode for all zones in this project."""
         if fan_mode not in self.fan_modes:
             _LOGGER.error("Unsupported fan mode: %s. Available: %s", fan_mode, self.fan_modes)
             return
@@ -349,10 +357,12 @@ class KoolnovaProjectEntity(ClimateEntity):
         self._global_fan_mode = fan_mode
         self.async_write_ha_state()
         
-        _LOGGER.info("Setting global fan mode to %s (speed: %s) for all zones", fan_mode, speed_code)
+        topic_id = self._project.get("Topic_id")
+        _LOGGER.info("Setting global fan mode to %s (speed: %s) for all zones in project %s",
+                    fan_mode, speed_code, topic_id)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_fan_speed(speed_code)
+            result = await self.coordinator.async_update_all_sensors_fan_speed(speed_code, topic_id=topic_id)
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -361,13 +371,14 @@ class KoolnovaProjectEntity(ClimateEntity):
                     title="Koolnova Global Fan Control",
                 )
             else:
-                _LOGGER.info("Global fan mode successfully updated to %s for all %d zones", fan_mode, result.get("updated", 0))
+                _LOGGER.info("Global fan mode successfully updated to %s for all %d zones in project %s",
+                            fan_mode, result.get("updated", 0), topic_id)
         except Exception as err:
             _LOGGER.error("Error setting global fan mode: %s", err)
             async_create(self.hass, f"Error setting global fan mode: {err}", title="Koolnova Global Fan Control")
 
     async def async_set_preset_mode(self, preset_mode: str):
-        """Set global zone HVAC mode for ALL zones."""
+        """Set global zone HVAC mode for all zones in this project."""
         if preset_mode not in self.preset_modes:
             _LOGGER.error("Unsupported preset mode: %s. Available: %s", preset_mode, self.preset_modes)
             return
@@ -386,10 +397,12 @@ class KoolnovaProjectEntity(ClimateEntity):
         self._global_zone_hvac_mode = hvac_mode
         self.async_write_ha_state()
 
-        _LOGGER.info("Setting global zone HVAC mode to %s (status: %s) for all zones", hvac_mode, status_code)
+        topic_id = self._project.get("Topic_id")
+        _LOGGER.info("Setting global zone HVAC mode to %s (status: %s) for all zones in project %s",
+                    hvac_mode, status_code, topic_id)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_status(status_code)
+            result = await self.coordinator.async_update_all_sensors_status(status_code, topic_id=topic_id)
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -398,14 +411,15 @@ class KoolnovaProjectEntity(ClimateEntity):
                     title="Koolnova Global Zone Control",
                 )
             else:
-                _LOGGER.info("Global zone HVAC mode successfully updated to %s for all %d zones", preset_mode, result.get("updated", 0))
+                _LOGGER.info("Global zone HVAC mode successfully updated to %s for all %d zones in project %s",
+                            preset_mode, result.get("updated", 0), topic_id)
         except Exception as err:
             _LOGGER.error("Error setting global zone HVAC mode: %s", err)
             async_create(self.hass, f"Error setting global zone HVAC mode: {err}", title="Koolnova Global Zone Control")
 
 
     async def async_set_temperature(self, **kwargs):
-        """Set global target temperature for ALL zones."""
+        """Set global target temperature for all zones in this project."""
         temp = kwargs.get("temperature")
         if temp is None:
             return
@@ -417,10 +431,11 @@ class KoolnovaProjectEntity(ClimateEntity):
             _LOGGER.error("Temperature %s out of configured range (%s - %s)", temp, self.min_temp, self.max_temp)
             return
 
-        _LOGGER.info("Setting global temperature to %s degrees for all zones", temp)
+        topic_id = self._project.get("Topic_id")
+        _LOGGER.info("Setting global temperature to %s degrees for all zones in project %s", temp, topic_id)
 
         try:
-            result = await self.coordinator.async_update_all_sensors_temperature(temp)
+            result = await self.coordinator.async_update_all_sensors_temperature(temp, topic_id=topic_id)
             if result.get("failed", 0) > 0:
                 async_create(
                     self.hass,
@@ -429,7 +444,8 @@ class KoolnovaProjectEntity(ClimateEntity):
                     title="Koolnova Global Temperature",
                 )
             else:
-                _LOGGER.info("Global temperature successfully updated to %s degrees for all %d zones", temp, result.get("updated", 0))
+                _LOGGER.info("Global temperature successfully updated to %s degrees for all %d zones in project %s",
+                            temp, result.get("updated", 0), topic_id)
         except Exception as err:
             _LOGGER.error("Error setting global temperature: %s", err)
             async_create(self.hass, f"Error setting global temperature: {err}", title="Koolnova Global Temperature")
@@ -456,9 +472,15 @@ class KoolnovaZoneEntity(ClimateEntity):
         self._attr_should_poll = False
 
         project_id = sensor.get("Topic_id", "global")
+        project_name = "System"
+        for proj in self.coordinator.data.get("projects", []):
+            if proj.get("Topic_id") == project_id:
+                project_name = proj.get("Project_Name", "System")
+                break
+
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{project_id}")},
-            name="Koolnova System",
+            name=f"Koolnova {project_name}",
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
@@ -558,9 +580,12 @@ class KoolnovaZoneEntity(ClimateEntity):
     def available(self):
         """Return if entity is available."""
         self._update_sensor_data()
+        topic_id = self._sensor.get("Topic_id")
         project_online = False
-        if self.coordinator.data.get("projects"):
-            project_online = self.coordinator.data["projects"][0].get("is_online", False)
+        for project in self.coordinator.data.get("projects", []):
+            if project.get("Topic_id") == topic_id:
+                project_online = project.get("is_online", False)
+                break
         return self.coordinator.last_update_success and project_online
 
     @property
