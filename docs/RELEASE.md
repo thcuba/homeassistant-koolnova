@@ -29,25 +29,19 @@ This integration is HACS (Home Assistant Community Store) compatible:
 
 ### Required HACS Configuration (`hacs.json`)
 
-The `hacs.json` file MUST include the following fields:
+The `hacs.json` file should include the following fields:
 
 ```json
 {
-  "name": "Integration Name",
-  "homeassistant": "minimum compatible version",
-  "domain": "integration_domain",
-  "repository": "https://github.com/user/repository",
-  "zip_release": false,
-  "config_flow": true,
-  "iot_class": "iot_class",
-  "categories": ["Category"]
+  "name": "Koolnova",
+  "homeassistant": "2024.12.0",
+  "country": ["IT"]
 }
 ```
 
 **Critical fields**:
-- `"domain"`: MUST match `manifest.json` domain exactly
-- `"repository"`: Full GitHub repository URL
-- `"zip_release"`: `false` (HACS uses standard GitHub zip downloads)
+- `"homeassistant"`: Minimum compatible version.
+- `"country"`: List of countries where the integration is relevant.
 
 ## Changelog
 
@@ -99,19 +93,13 @@ REPOSITORY_ROOT/
 
 ```json
 {
-  "name": "Integration Name",
-  "homeassistant": "minimum version",
-  "domain": "exact_domain",      // MUST match manifest.json
-  "repository": "full_github_url",
-  "config_flow": true/false,
-  "iot_class": "iot_class",
-  "categories": ["Category"]
+  "name": "Koolnova",
+  "homeassistant": "2024.12.0",
+  "country": ["IT"]
 }
 ```
 
-**❌ DO NOT USE**:
-- `"zip_release": true` (HACS uses standard GitHub downloads)
-- `"filename": "custom.zip"` (no custom ZIPs allowed)
+**Note**: Do not include `domain`, `repository`, `categories`, or `zip_release` in `hacs.json` as they are either redundant or invalid for integrations and can cause CI failures.
 
 ### Steps for HACS-Compatible Release
 
