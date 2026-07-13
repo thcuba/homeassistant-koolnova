@@ -18,7 +18,7 @@ This integration consumes the Koolnova REST API to control HVAC systems. The API
 - **Description**: Retrieves the list of sensors/zones.
 - **Response**: List of sensors with temperature, setpoint, status, fan speed, etc.
 
-### PATCH `/topics/sensors/{sensor_id}/`
+### PUT `/topics/sensors/{sensor_id}/`
 - **Description**: Updates a specific sensor.
 - **Path parameter**:
   - `sensor_id`: ID of the sensor.
