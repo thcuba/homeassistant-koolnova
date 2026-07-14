@@ -2,12 +2,10 @@
 
 """Climate entities for Koolnova."""
 
-import asyncio
 import logging
 import statistics
 from collections import Counter
 from datetime import datetime
-from requests.exceptions import HTTPError
 
 from homeassistant.components.climate import (
     ClimateEntity,
