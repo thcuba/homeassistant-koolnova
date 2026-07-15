@@ -8,9 +8,9 @@ import sys
 import os
 
 # Agregar el directorio del proyecto al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from koolnova_api.client import KoolnovaAPIRestClient
+from custom_components.koolnova.koolnova_api.client import KoolnovaAPIRestClient
 
 def analyze_room_specific_data():
     """Analiza qué datos son específicos de habitación vs globales"""

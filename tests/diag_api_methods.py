@@ -8,10 +8,10 @@ import sys
 import os
 
 # Add the project directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../custom_components/koolnova"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from koolnova_api.client import KoolnovaAPIRestClient
-from koolnova_api.exceptions import KoolnovaError
+from custom_components.koolnova.koolnova_api.client import KoolnovaAPIRestClient
+from custom_components.koolnova.koolnova_api.exceptions import KoolnovaError
 
 def test_api_methods():
     """Test additional API methods with credentials"""

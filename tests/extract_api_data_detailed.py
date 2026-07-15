@@ -9,9 +9,9 @@ import os
 from collections import defaultdict
 
 # Agregar el directorio del proyecto al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from koolnova_api.client import KoolnovaAPIRestClient
+from custom_components.koolnova.koolnova_api.client import KoolnovaAPIRestClient
 
 def extract_api_data_detailed():
     """Extrae y analiza detalladamente todos los datos de los endpoints adicionales"""

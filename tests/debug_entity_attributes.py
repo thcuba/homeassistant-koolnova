@@ -13,7 +13,7 @@ from collections import Counter
 # Agregar el directorio del proyecto al path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from koolnova_api.client import KoolnovaAPIRestClient
+from custom_components.koolnova.koolnova_api.client import KoolnovaAPIRestClient
 
 def debug_entity_attributes():
     """Simula exactamente la lógica de extra_state_attributes de KoolnovaProjectEntity"""
