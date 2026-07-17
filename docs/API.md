@@ -44,7 +44,7 @@ All requests must include:
 ```
 User-Agent: Mozilla/5.0 (REQUIRED)
 accept: application/json, text/plain, */*
-accept-language: fr
+accept-language: en
 origin: https://app.koolnova.com
 referer: https://app.koolnova.com/
 cache-control: no-cache
