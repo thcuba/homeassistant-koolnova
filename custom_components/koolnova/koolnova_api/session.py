@@ -73,7 +73,7 @@ class KoolnovaClientSession(Session):
         else:
             payload = {"username": username or "", "password": password}
 
-        _LOGGER.debug("Auth payload: %s", payload)
+        _LOGGER.debug("Auth payload: %s", {k: "***" if k == "password" else v for k, v in payload.items()})
 
         # Add headers similar to browser request (helps servers routing based on Origin/UA)
         headers_token = {
@@ -163,6 +163,7 @@ class KoolnovaClientSession(Session):
             raise RuntimeError(f"Authentication response did not contain a token: {data}")
 
         self.bearerToken = str(token)
+        self.bearer_token = self.bearerToken  # Alias snake_case
         self.token_created = time.time()  # Track when token was created
         self.last_request_time = time.time()  # Track last API call time
         _LOGGER.debug("BearerToken of authentication : %s", self.bearerToken)

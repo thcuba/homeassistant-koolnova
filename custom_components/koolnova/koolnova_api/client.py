@@ -174,8 +174,8 @@ class KoolnovaAPIRestClient:
         url = f"topics/sensors/{sensor_id}/"
         headers = PATCH_HEADERS.copy()
 
-        # Send the PUT request
-        response = self._get_session().rest_request("PUT", url, json=payload, headers=headers)
+        # Send the PATCH request (partial update)
+        response = self._get_session().rest_request("PATCH", url, json=payload, headers=headers)
         response.raise_for_status()
 
         _LOGGER.debug("Sensor %s updated successfully with payload %s: %s", sensor_id, payload, response.json())
@@ -191,6 +191,9 @@ class KoolnovaAPIRestClient:
         headers = COMMON_HEADERS.copy()
         resp = self._get_session().rest_request("GET", "modules/", headers=headers)
         json_resp = resp.json()
+        if not isinstance(json_resp, list):
+            _LOGGER.warning("Unexpected modules response type: %s", type(json_resp))
+            return {"koolnova": [], "hub": []}
         koolnova = []
         hub = []
         for item in json_resp:
@@ -216,6 +219,7 @@ class KoolnovaAPIRestClient:
     def get_hub_state(self, hub_id: str) -> Dict[str, Any]:
         headers = COMMON_HEADERS.copy()
         resp = self._get_session().rest_request("GET", f"hub/{hub_id}/state", headers=headers)
+        resp.raise_for_status()
         json_resp = resp.json()
         state_equipment = json_resp.get("stateEquipment")
         behavior = json_resp.get("behavior")

@@ -162,7 +162,9 @@ class KoolnovaProjectEntity(ClimateEntity):
 
         if modes:
             # Return the most common mode, if tie, Counter.most_common returns first one
-            return Counter(modes).most_common(1)[0][0]
+            most_common = Counter(modes).most_common(1)
+            if most_common:
+                return most_common[0][0]
         return None
 
     @property
