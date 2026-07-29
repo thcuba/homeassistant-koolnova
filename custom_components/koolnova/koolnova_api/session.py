@@ -94,7 +94,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(auth_max_attempts):
             try:
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=30)
+                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=60)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, auth_max_attempts, e)
                 response = None
@@ -235,7 +235,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(retries + 1):
             try:
-                response = super().request(method, url, headers=headers_auth, timeout=30, **kwargs)
+                response = super().request(method, url, headers=headers_auth, timeout=60, **kwargs)
                 self.last_request_time = time.time()
 
                 # Handle 401: token expired or invalid -> refresh and retry
