@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from datetime import timedelta
 from unittest.mock import MagicMock
 from custom_components.koolnova.const import DEFAULT_UPDATE_INTERVAL, CONF_UPDATE_INTERVAL
@@ -33,9 +34,12 @@ class TestKoolnovaCoordinator(unittest.TestCase):
             "project_update_frequency": 20
         }
 
-        # Call async_options_updated
-        import asyncio
-        asyncio.run(coordinator.async_options_updated())
+        # Call async_options_updated using existing event loop
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(coordinator.async_options_updated())
+        finally:
+            loop.close()
 
         self.assertEqual(coordinator.update_interval, timedelta(seconds=80))
         self.assertEqual(coordinator._project_update_frequency, 20)

@@ -33,7 +33,11 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "connectivity_status"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
-    _attr_should_poll = False
+    _attr_should_poll = False  # Uses coordinator push updates via listener
+
+    async def async_update(self):
+        """Refresh sensor data from the coordinator."""
+        await self.coordinator.async_request_refresh()
 
     def __init__(self, coordinator, config_entry, project=None):
         """Initialize the connectivity sensor."""

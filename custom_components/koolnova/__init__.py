@@ -18,7 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = KoolnovaDataUpdateCoordinator(hass, entry)
 
     # Only do first refresh if data is empty (initial setup)
-    if not coordinator.data or not coordinator.data.get("projects"):
+    if not coordinator.data or not coordinator.data.get("projects") or len(coordinator.data.get("projects", [])) == 0:
         await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
