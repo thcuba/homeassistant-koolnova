@@ -5,6 +5,42 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [1.4.0] — 2026-08-01
+
+### Changed — breaking
+
+- **The connectivity entity's attributes were renamed to snake_case identifiers.** They used to be
+  display strings with Spanish text and accents baked in, which forced that language on every
+  dashboard and template that read them.
+
+  | Before | Now |
+  |---|---|
+  | `Señal WiFi` | `wifi_signal` |
+  | `Online` | `online` |
+  | `Última actualización` | `last_update` |
+  | `Última actualización <room>` (one per room) | `rooms_last_update`, a mapping keyed by room name |
+
+  The display text now lives in the translation files, so Home Assistant shows the attributes
+  localised in English and Spanish instead of hard-coding either.
+
+  **If you read these attributes**, update your templates:
+
+  ```jinja
+  {{ state_attr('<entity>', 'wifi_signal') }}
+  {{ state_attr('<entity>', 'last_update') }}
+  {{ state_attr('<entity>', 'rooms_last_update')['Kitchen'] }}
+  ```
+
+  The per-room attributes were merged into one mapping because dynamically named attributes cannot
+  be declared in the translation files, and so could never be localised.
+
+### Added
+
+- Attribute translations for the connectivity entity (`state_attributes` in `strings.json` and
+  `translations/{en,es}.json`), declared under both the `climate` and `sensor` domains.
+- Tests covering the translation files and the attribute keys, so display strings cannot creep back
+  into the keys.
+
 ## [1.3.2] — 2026-07-06
 
 ### Added
@@ -82,6 +118,7 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 Initial release: projects and zones as `climate` entities, with temperature and mode control.
 
+[1.4.0]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.4.0
 [1.3.2]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.2
 [1.3.1]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.1
 [1.3.0]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.0

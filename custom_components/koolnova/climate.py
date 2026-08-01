@@ -629,7 +629,7 @@ class KoolnovaConnectivitySensor(SensorEntity):
 
     @property
     def state(self):
-        """Estado: Online/Offline basado en el sistema."""
+        """Online/Offline, based on the state of the system."""
         sensors = self.coordinator.data.get("sensors", [])
         if not sensors:
             return "Desconocido"
@@ -641,7 +641,13 @@ class KoolnovaConnectivitySensor(SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        """Todos los atributos de conectividad."""
+        """All connectivity attributes.
+
+        Attribute keys are snake_case identifiers, not display strings: Home
+        Assistant localises them through `state_attributes` in the translation
+        files. Per-room timestamps live in a single `rooms_last_update` mapping
+        because a dynamically named attribute per room could not be translated.
+        """
         sensors = self.coordinator.data.get("sensors", [])
         if not sensors:
             return {}
@@ -649,28 +655,32 @@ class KoolnovaConnectivitySensor(SensorEntity):
         # System-wide information
         topic_info = sensors[0].get("topic_info", {})
         attrs = {
-            "Señal WiFi": topic_info.get("rssi"),
-            "Online": topic_info.get("is_online"),
+            "wifi_signal": topic_info.get("rssi"),
+            "online": topic_info.get("is_online"),
         }
 
         # Last update of the system
         system_last_sync = topic_info.get("last_sync")
         if system_last_sync:
-            try:
-                attrs["Última actualización"] = datetime.fromisoformat(system_last_sync)
-            except (ValueError, TypeError):
-                attrs["Última actualización"] = system_last_sync
+            attrs["last_update"] = self._as_datetime(system_last_sync)
 
-        # Last update of each room
+        # Last update of each room, keyed by room name
+        rooms_last_update = {}
         for sensor in sensors:
-            room_name = sensor.get("Room_Name", f"habitacion_{sensor.get('Room_id')}")
-            sensor_topic_info = sensor.get("topic_info", {})
-            room_last_sync = sensor_topic_info.get("last_sync")
+            room_name = sensor.get("Room_Name", f"room_{sensor.get('Room_id')}")
+            room_last_sync = sensor.get("topic_info", {}).get("last_sync")
 
             if room_last_sync:
-                try:
-                    attrs[f"Última actualización {room_name}"] = datetime.fromisoformat(room_last_sync)
-                except (ValueError, TypeError):
-                    attrs[f"Última actualización {room_name}"] = room_last_sync
+                rooms_last_update[room_name] = self._as_datetime(room_last_sync)
+
+        attrs["rooms_last_update"] = rooms_last_update
 
         return attrs
+
+    @staticmethod
+    def _as_datetime(value):
+        """Parse an API timestamp, falling back to the raw string."""
+        try:
+            return datetime.fromisoformat(value)
+        except (ValueError, TypeError):
+            return value
