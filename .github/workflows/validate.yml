@@ -17,8 +17,9 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # "brands" requiere estar en home-assistant/brands (PR externo).
-          # Se ignora porque se distribuye como repositorio custom de HACS.
+          # "brands" would require being listed in home-assistant/brands, which no
+          # longer accepts custom integrations. This one ships its own images under
+          # custom_components/koolnova/brand/, so the check is skipped.
           ignore: brands
 
   hassfest:
@@ -27,3 +28,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install the only runtime dependency of the vendored client
+        run: pip install requests
+      - name: Run the test suite
+        run: python -m unittest discover -s tests -t . -v

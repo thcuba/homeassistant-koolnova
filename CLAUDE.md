@@ -73,9 +73,11 @@ and breaks HACS installs for everyone (a stray `v1.2.1-fixed` release did exactl
 
 ## Working here
 
-- There is no automated test suite in this repo (a prior `tests/` directory held ad-hoc,
-  credential-bearing API exploration scripts and was purged from history — do not recreate that
-  pattern; if you add tests, use mocked HTTP responses, never real Koolnova credentials).
-- This integration can only really be exercised against a live Home Assistant instance + a real
-  Koolnova account, which Claude Code cannot do here — reason about changes against `docs/API.md`
-  and existing tests/mocks rather than assuming behavior.
+- `tests/` covers the vendored `koolnova_api` client with stdlib `unittest` and mocked HTTP —
+  run it with `python3 -m unittest discover -s tests -t .` after touching the client. Every HTTP
+  call is mocked; never put real Koolnova credentials in a test (an earlier `tests/` directory did
+  and had to be purged from git history in v1.2.6).
+- The Home Assistant side (`climate.py`, `coordinator.py`, `config_flow.py`) has no tests: it can
+  only really be exercised against a live Home Assistant instance + a real Koolnova account, which
+  Claude Code cannot do here — reason about those changes against `docs/API.md` rather than
+  assuming behavior.

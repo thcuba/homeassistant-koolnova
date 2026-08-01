@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 
 from .exceptions import KoolnovaError
@@ -26,7 +27,8 @@ class KoolnovaAPIRestClient:
         Args:
             username: string containing your Koolnova's app username
             password: string containing your Koolnova's app password
-            email: optional email associated to the account (API accepte username, email, password)
+            email: optional email for the account; this is the field the API
+                authenticates on (see session.py)
         """
         self.username = username
         self.password = password
@@ -74,12 +76,12 @@ class KoolnovaAPIRestClient:
 
         return self.session
 
-    
+    def get_project(self) -> List[Dict[str, Any]]:
+        """Return the list of projects, one dict per project.
 
-   
-
-    def get_project(self) -> Dict[str, Any]:
-
+        Raises:
+            KoolnovaError: if the API returns no usable data.
+        """
         # Use the same endpoint shape as the webapp: trailing slash + common
         # query params. Add browser-like headers to match the web request.
         params = {
@@ -92,21 +94,16 @@ class KoolnovaAPIRestClient:
         headers = COMMON_HEADERS.copy()
 
         response = self._get_session().rest_request("GET", "projects/", params=params, headers=headers)
-        response.raise_for_status()
         json_resp = response.json()
         if not json_resp:
             raise KoolnovaError(
-                f"Error : No data received for Koolnova by the API. "
-                + "You should test on Koolnova official app. "
-                + "Or perhaps API has changed :(."
+                "No data received from the Koolnova API. Check the official "
+                "Koolnova app, or the API may have changed."
             )
 
-        #_LOGGER.debug("Raw response: %s", json_resp)
+        if not json_resp.get("data"):
+            raise KoolnovaError("The Koolnova API returned no projects")
 
-        if not json_resp["data"]:
-            raise KoolnovaError(
-                f"Error :  No data"
-                )
         projects = []
         for project in json_resp["data"]:
             _LOGGER.debug("Project Name : %s", project["name"])
@@ -120,14 +117,16 @@ class KoolnovaAPIRestClient:
                 "is_online": project["topic"]["is_online"],
                 "eco": project["topic"]["eco"],
                 "last_sync": project["topic"]["last_sync"],
-
-
             })
 
         return projects
 
-    def get_sensors(self) -> Dict[str, Any]:
+    def get_sensors(self) -> List[Dict[str, Any]]:
+        """Return the list of sensors (zones), one dict per room.
 
+        Raises:
+            KoolnovaError: if the API returns no usable data.
+        """
         # Request the sensors endpoint using trailing slash and browser-like headers
         headers = COMMON_HEADERS.copy()
 
@@ -135,17 +134,12 @@ class KoolnovaAPIRestClient:
         json_resp = resp.json()
         if not json_resp:
             raise KoolnovaError(
-                f"Error : No data received for Koolnova by the API. "
-                + "You should test on Koolnova official app. "
-                + "Or perhaps API has changed :(."
+                "No data received from the Koolnova API. Check the official "
+                "Koolnova app, or the API may have changed."
             )
 
-        #_LOGGER.debug("Raw response: %s", json_resp)
-
-        if not json_resp["data"]:
-            raise KoolnovaError(
-                f"Error :  No data"
-                )
+        if not json_resp.get("data"):
+            raise KoolnovaError("The Koolnova API returned no sensors")
 
         rooms = []
         for room in json_resp["data"]:
@@ -153,9 +147,9 @@ class KoolnovaAPIRestClient:
             _LOGGER.debug("Room Room_actual_temp : %s", room["temperature"])
             _LOGGER.debug("Topic Info : %s", room.get("topic_info", {}))
             # Get the id out of topic_info
-            topic_id = room.get("topic_info", {}).get("id", "Unknown")
             # Keep the whole topic_info block: it carries RSSI, online and sync
             topic_info = room.get("topic_info", {})
+            topic_id = topic_info.get("id", "Unknown")
 
             rooms.append({
                 "Room_Name": room["name"],
@@ -170,11 +164,12 @@ class KoolnovaAPIRestClient:
             })
 
         return rooms
-       
 
     def update_sensor(self, sensor_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Update specific attributes for a sensor.
+        Update specific attributes for a sensor (zone).
+
+        Note this endpoint takes PUT, unlike update_project which takes PATCH.
 
         Args:
             sensor_id: The ID of the sensor to update.
@@ -186,12 +181,11 @@ class KoolnovaAPIRestClient:
         url = f"topics/sensors/{sensor_id}/"
         headers = PATCH_HEADERS.copy()
 
-        # Send the PUT request
         response = self._get_session().rest_request("PUT", url, json=payload, headers=headers)
-        response.raise_for_status()
+        result = response.json()
 
-        _LOGGER.debug("Sensor %s updated successfully with payload %s: %s", sensor_id, payload, response.json())
-        return response.json()
+        _LOGGER.debug("Sensor %s updated successfully with payload %s: %s", sensor_id, payload, result)
+        return result
 
     def update_project(self, topic_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -208,7 +202,7 @@ class KoolnovaAPIRestClient:
         headers = PATCH_HEADERS.copy()
 
         response = self._get_session().rest_request("PATCH", url, json=payload, headers=headers)
-        response.raise_for_status()
+        result = response.json()
 
-        _LOGGER.debug("Project %s updated successfully with payload %s: %s", topic_id, payload, response.json())
-        return response.json()
+        _LOGGER.debug("Project %s updated successfully with payload %s: %s", topic_id, payload, result)
+        return result

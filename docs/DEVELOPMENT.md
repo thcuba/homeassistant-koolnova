@@ -61,14 +61,26 @@ also on repeated failed logins. Hence `MIN_UPDATE_INTERVAL` is 30 s (the coordin
 more aggressive configurations to it) and a 300 s cooldown exists after a failed login. **Do not
 lower these limits.**
 
+## Tests
+
+The vendored client is covered by `tests/`, which runs on the standard library alone — no pytest,
+no Home Assistant install:
+
+```bash
+python3 -m unittest discover -s tests -t . -v
+```
+
+Every HTTP call is mocked. The suite pins down the things that have actually broken in production:
+the `email` login field, the browser headers, `PUT` vs `PATCH` per endpoint, the auth-failure
+cooldown, and the code tables. CI runs it on every push (`.github/workflows/validate.yml`).
+
+**Never put real credentials in a test.** An earlier `tests/` directory held API exploration
+scripts with a plaintext password and had to be purged from git history in v1.2.6.
+
+The Home Assistant side (`climate.py`, `coordinator.py`, `config_flow.py`) is not covered: it needs
+a live Home Assistant instance and a real Koolnova account to mean anything.
+
 ## Test environment
-
-There is no test suite: the integration can only really be exercised against a live Home Assistant
-instance and a real Koolnova account.
-
-A `tests/` directory once held API exploration scripts with plaintext credentials; it was purged
-from history in v1.2.6. **Do not recreate that pattern** — if you add tests, use mocked HTTP
-responses, never real credentials.
 
 Development happens against a Home Assistant instance in Docker, editing the integration directly
 in its configuration directory:
