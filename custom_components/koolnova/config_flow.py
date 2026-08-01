@@ -79,7 +79,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(user_input[CONF_EMAIL])
             self._abort_if_unique_id_configured()
             
-            # Configuracion inicial con valores por defecto
+            # Initial configuration with default values
             config_data = {
                 CONF_EMAIL: user_input[CONF_EMAIL],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
@@ -158,7 +158,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_data = self.entry.data
         current_options = self.entry.options
 
-        # Obtener valores actuales o por defecto
+        # Read the current values, falling back to the defaults
         current_interval = current_options.get(CONF_UPDATE_INTERVAL, current_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
         current_project_update_freq = current_options.get(CONF_PROJECT_UPDATE_FREQUENCY, current_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY))
         current_project_modes = current_options.get(CONF_PROJECT_HVAC_MODES, current_data.get(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]))

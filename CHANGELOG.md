@@ -1,86 +1,86 @@
 # Changelog
 
-Todas las versiones publicadas de la integración. El formato sigue
-[Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el versionado es
-[SemVer](https://semver.org/lang/es/): el tag de git y el campo `"version"` de
-`manifest.json` son siempre idénticos (ver [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publicar-una-release)).
+Every published version of the integration. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versioning follows
+[SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
+identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ## [1.3.2] — 2026-07-06
 
-### Añadido
-- Icono y logo de marca servidos por la propia integración desde
-  `custom_components/koolnova/brand/`. Desde HA 2026.3 estas imágenes locales tienen prioridad
-  sobre el CDN de marcas, así que la integración muestra su logo sin depender de
-  `home-assistant/brands` — que **ya no acepta integraciones custom** (su bot cierra el PR
-  automáticamente desde el cambio de `brands-proxy-api` de febrero de 2026).
+### Added
+- Brand icon and logo served by the integration itself from
+  `custom_components/koolnova/brand/`. Since HA 2026.3 these local images take priority over the
+  brands CDN, so the integration shows its logo without depending on `home-assistant/brands` —
+  which **no longer accepts custom integrations** (its bot closes the PR automatically, following
+  the February 2026 `brands-proxy-api` change).
 
 ## [1.3.1] — 2026-07-05
 
-### Corregido
-- **Regresión de login introducida en 1.3.0.** La 1.3.0 pasó el identificador del usuario en el
-  campo `username` del payload de `/auth/v2/login/`; la API responde `400 "Unable to log in with
-  provided credentials"` con `username` y `200` con `email`. Se vuelve a `email`.
+### Fixed
+- **Login regression introduced in 1.3.0.** 1.3.0 sent the user identifier in the `username` field
+  of the `/auth/v2/login/` payload; the API answers `400 "Unable to log in with provided
+  credentials"` for `username` and `200` for `email`. Reverted to `email`.
 
-  El `404` original del issue #4 nunca lo causó el nombre del campo, sino la falta de headers de
-  navegador — que la 1.3.0 sí añadió correctamente y aquí se conservan.
+  The original `404` in issue #4 was never caused by the field name but by the missing
+  browser-like headers — which 1.3.0 did add correctly and are kept here.
 
 ## [1.3.0] — 2026-07-04
 
-### Corregido
-- **Autenticación rota (issue #4).** Desde mayo de 2026 la API responde `404` en
-  `/auth/v2/login/` a las peticiones que no parecen venir de un navegador. Se envían ahora
-  `User-Agent` de Chrome moderno y los headers `sec-ch-ua*` / `sec-fetch-*`.
-- `hacs.json` contenía claves no admitidas que hacían fallar el check `hacsjson`; el workflow de
-  validación vuelve a pasar (`brands` se ignora por tratarse de un repositorio custom).
+### Fixed
+- **Broken authentication (issue #4).** Since May 2026 the API answers `404` on `/auth/v2/login/`
+  to requests that do not look like they come from a browser. The client now sends a modern Chrome
+  `User-Agent` plus the `sec-ch-ua*` / `sec-fetch-*` headers.
+- `hacs.json` contained keys that are not allowed, which made the `hacsjson` check fail; the
+  validation workflow passes again (`brands` is skipped since this is a custom repository).
 
-### Seguridad
-- Protección anti-ban: Koolnova banea la IP automáticamente si se consulta más de una vez cada
-  30 s (confirmado por su soporte). El intervalo mínimo y por defecto pasan a 30 s, y el
-  coordinator recorta los valores de configuraciones anteriores a este límite.
-- Protección anti-ban: cooldown de 5 minutos tras un login fallido antes de reintentar; los
-  logins fallidos repetidos también provocan ban de IP.
-- Los logs de debug ya no incluyen el payload de login (contenía la contraseña) ni el token.
+### Security
+- Ban protection: Koolnova bans your IP automatically if polled more often than once every 30 s
+  (confirmed by their support). The minimum and default interval are now 30 s, and the coordinator
+  clamps configurations created before that limit existed.
+- Ban protection: 5-minute cooldown after a failed login before retrying; repeated failed logins
+  also trigger an IP ban.
+- Debug logs no longer include the login payload (it contained the password) or the token.
 
-### Eliminado
-- Código muerto heredado del proyecto original (métodos de piscinas y hubs, ~110 líneas) y la
-  dependencia implícita de `dateutil`.
+### Removed
+- Dead code inherited from the original project (pool and hub methods, ~110 lines) and the implicit
+  `dateutil` dependency.
 
-### Sin cambios
-- Los modos HVAC por defecto se mantienen.
+### Unchanged
+- Default HVAC modes stay as they were.
 
 ## [1.2.6] — 2026-07-04
 
-### Seguridad
-- Eliminado el directorio `tests/` y purgado del historial de git: contenía scripts de
-  exploración de la API con credenciales en texto plano. El historial de commits fue reescrito.
+### Security
+- Removed the `tests/` directory and purged it from git history: it contained API exploration
+  scripts with plaintext credentials. Commit history was rewritten.
 
-### Añadido
-- Workflow de validación HACS/hassfest (`.github/workflows/validate.yml`).
-- `CLAUDE.md` con las reglas de trabajo del repositorio.
+### Added
+- HACS/hassfest validation workflow (`.github/workflows/validate.yml`).
+- `CLAUDE.md` with the repository working rules.
 
-### Corregido
-- Enlace roto a la documentación de troubleshooting en el README.
+### Fixed
+- Broken link to the troubleshooting documentation in the README.
 
 ## [1.2.0]
 
-### Corregido
-- **Errores 404 en todas las llamadas a la API.** El módulo local se llamaba `koolnovaapi` y
-  colisionaba con el paquete PyPI `koolnova-api`. Se renombra a `koolnova_api` (con guión bajo),
-  se vendoriza dentro del repositorio, se le añade `__init__.py` y pasa a importarse siempre con
-  imports relativos. La integración deja de tener dependencias externas.
+### Fixed
+- **404 errors on every API call.** The local module was named `koolnovaapi` and collided with the
+  `koolnova-api` PyPI package. It was renamed to `koolnova_api` (underscore), vendored inside the
+  repository, given an `__init__.py`, and is now always imported relatively. The integration no
+  longer has external dependencies.
 
 ## [1.1.0]
 
-### Añadido
-- Control global del proyecto además del control por zona.
+### Added
+- Global project control alongside per-zone control.
 
-### Corregido
-- Errores en la actualización de sensores.
-- Mapeos HVAC y polling del coordinator optimizados.
+### Fixed
+- Errors when updating sensors.
+- Optimised HVAC mappings and coordinator polling.
 
 ## [1.0.0]
 
-Versión inicial: proyectos y zonas como entidades `climate`, con control de temperatura y modo.
+Initial release: projects and zones as `climate` entities, with temperature and mode control.
 
 [1.3.2]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.2
 [1.3.1]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.1

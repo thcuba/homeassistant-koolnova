@@ -54,7 +54,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         proj = coordinator.data["projects"][0]
         entities.append(KoolnovaProjectEntity(coordinator, entry, proj))
 
-    # Agregar sensor de conectividad único
+    # Add the single connectivity sensor
     entities.append(KoolnovaConnectivitySensor(coordinator, entry))
 
     for sensor in coordinator.data.get("sensors", []):
@@ -66,7 +66,7 @@ class KoolnovaProjectEntity(ClimateEntity):
     """Project entity with global control: temperature, project HVAC mode, zone fan speed, and zone HVAC mode."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "koolnova_project" # Clave para que HA busque traducciones específicas.
+    _attr_translation_key = "koolnova_project" # Key HA uses to look up specific translations.
 
     def __init__(self, coordinator, config_entry, project):
         """Initialize the project entity."""
@@ -130,7 +130,7 @@ class KoolnovaProjectEntity(ClimateEntity):
     @property
     def preset_modes(self):
         """Return available zone HVAC modes as custom preset modes."""
-        # Devolvemos los valores ('off', 'auto') que se usarán como claves en los ficheros de traducción.
+        # Return the raw values ('off', 'auto'): they are the keys used in the translation files.
         return [mode.value for mode in self._get_zone_hvac_modes()]
 
     @property
@@ -238,14 +238,14 @@ class KoolnovaProjectEntity(ClimateEntity):
         sensors = self.coordinator.data.get("sensors", [])
         sensors_count = len(sensors)
 
-        # Obtener datos de conectividad del sistema desde sensores (más actualizados)
+        # Take system connectivity from the sensors: they are fresher than the project
         system_connectivity = {}
         if sensors:
             topic_info = sensors[0].get("topic_info", {})  # Cualquier sensor tiene los mismos datos globales
             system_connectivity = {
                 "system_rssi": topic_info.get("rssi"),
-                "online_status": topic_info.get("is_online"),  # Más actualizado que del proyecto
-                "last_sync": topic_info.get("last_sync"),      # Más actualizado que del proyecto
+                "online_status": topic_info.get("is_online"),  # fresher than the project copy
+                "last_sync": topic_info.get("last_sync"),      # fresher than the project copy
             }
 
         zone_status_breakdown = {}
@@ -541,7 +541,7 @@ class KoolnovaZoneEntity(ClimateEntity):
             "room_speed_raw": self._sensor.get("Room_speed"),
             "topic_id": self._sensor.get("Topic_id", None),
             "last_updated": self._sensor.get("Room_update_at"),
-            "system_last_sync": system_last_sync,  # Última sync del sistema
+            "system_last_sync": system_last_sync,  # last sync of the system
         }
 
     async def async_set_temperature(self, **kwargs):
@@ -607,7 +607,7 @@ class KoolnovaZoneEntity(ClimateEntity):
 
 
 class KoolnovaConnectivitySensor(SensorEntity):
-    """Sensor único con toda la información de conectividad del sistema Koolnova."""
+    """Single sensor holding all connectivity information of the Koolnova system."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "connectivity_status"
@@ -646,14 +646,14 @@ class KoolnovaConnectivitySensor(SensorEntity):
         if not sensors:
             return {}
 
-        # Información del sistema (global)
+        # System-wide information
         topic_info = sensors[0].get("topic_info", {})
         attrs = {
             "Señal WiFi": topic_info.get("rssi"),
             "Online": topic_info.get("is_online"),
         }
 
-        # Última actualización del sistema
+        # Last update of the system
         system_last_sync = topic_info.get("last_sync")
         if system_last_sync:
             try:
@@ -661,7 +661,7 @@ class KoolnovaConnectivitySensor(SensorEntity):
             except (ValueError, TypeError):
                 attrs["Última actualización"] = system_last_sync
 
-        # Última actualización de cada habitación
+        # Last update of each room
         for sensor in sensors:
             room_name = sensor.get("Room_Name", f"habitacion_{sensor.get('Room_id')}")
             sensor_topic_info = sensor.get("topic_info", {})

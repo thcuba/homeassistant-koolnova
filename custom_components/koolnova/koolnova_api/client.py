@@ -101,7 +101,7 @@ class KoolnovaAPIRestClient:
                 + "Or perhaps API has changed :(."
             )
 
-        #_LOGGER.debug("Réponse brute  : %s", json_resp)
+        #_LOGGER.debug("Raw response: %s", json_resp)
 
         if not json_resp["data"]:
             raise KoolnovaError(
@@ -140,7 +140,7 @@ class KoolnovaAPIRestClient:
                 + "Or perhaps API has changed :(."
             )
 
-        #_LOGGER.debug("Réponse brute  : %s", json_resp)
+        #_LOGGER.debug("Raw response: %s", json_resp)
 
         if not json_resp["data"]:
             raise KoolnovaError(
@@ -152,9 +152,9 @@ class KoolnovaAPIRestClient:
             _LOGGER.debug("Room Name : %s", room["name"])
             _LOGGER.debug("Room Room_actual_temp : %s", room["temperature"])
             _LOGGER.debug("Topic Info : %s", room.get("topic_info", {}))
-            # Récupérer l'id de topic_info
+            # Get the id out of topic_info
             topic_id = room.get("topic_info", {}).get("id", "Unknown")
-            # Incluir toda la información de topic_info para acceder a RSSI, online, sync
+            # Keep the whole topic_info block: it carries RSSI, online and sync
             topic_info = room.get("topic_info", {})
 
             rooms.append({
@@ -166,7 +166,7 @@ class KoolnovaAPIRestClient:
                 "Room_setpoint_temp": room["setpoint_temperature"],
                 "Room_speed": room["speed"],
                 "Topic_id": topic_id,
-                "topic_info": topic_info  # AÑADIDO: Toda la información de conectividad
+                "topic_info": topic_info  # full connectivity information
             })
 
         return rooms

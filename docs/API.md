@@ -1,24 +1,24 @@
-# API de Koolnova
+# The Koolnova API
 
-Referencia de la API REST que consume esta integración. **No es una API pública ni documentada**:
-todo lo que hay aquí está obtenido por ingeniería inversa de la webapp `app.koolnova.com` y
-verificado contra el código del cliente en `custom_components/koolnova/koolnova_api/`.
+Reference for the REST API this integration consumes. **It is neither public nor documented**:
+everything here was reverse-engineered from the `app.koolnova.com` webapp and verified against the
+client code in `custom_components/koolnova/koolnova_api/`.
 
 Base: `https://api.koolnova.com` (Django REST framework).
 
-> Si cambias algo del cliente, actualiza este documento en el mismo commit. Es la única
-> descripción que existe de esta API.
+> If you change the client, update this document in the same commit. It is the only description of
+> this API that exists.
 
-## Reglas que hacen fallar todo si no se respetan
+## Rules that break everything when ignored
 
-1. **Headers de navegador en todas las peticiones.** Desde mayo de 2026 la API responde `404`
-   (no `401`, no `403`) a las peticiones que no los llevan, lo que hace parecer que el endpoint
-   ha desaparecido. Ver `COMMON_HEADERS` en `koolnova_api/const.py`.
-2. **Barra final en las rutas.** `projects/` sí, `projects` no.
-3. **Máximo una consulta cada 30 s.** Koolnova banea la IP automáticamente por encima de ese
-   ritmo (confirmado por su soporte), y también ante logins fallidos repetidos.
+1. **Browser-like headers on every request.** Since May 2026 the API answers `404` (not `401`, not
+   `403`) to requests without them, which makes it look like the endpoint is gone. See
+   `COMMON_HEADERS` in `koolnova_api/const.py`.
+2. **Trailing slash on every path.** `projects/` yes, `projects` no.
+3. **At most one request every 30 s.** Koolnova bans your IP automatically above that rate, and
+   also on repeated failed logins.
 
-## Headers comunes
+## Common headers
 
 ```
 accept: application/json, text/plain, */*
@@ -35,112 +35,113 @@ sec-fetch-mode: cors
 sec-fetch-site: same-site
 ```
 
-Las peticiones con cuerpo añaden `content-type: application/json` (`PATCH_HEADERS`).
-Las peticiones autenticadas añaden `Authorization: Bearer <token>`.
+Requests with a body add `content-type: application/json` (`PATCH_HEADERS`).
+Authenticated requests add `Authorization: Bearer <token>`.
 
-## Autenticación
+## Authentication
 
 ### `POST /auth/v2/login/`
 
-El identificador va en el campo **`email`**. Es el detalle más frágil de toda la integración:
+The identifier goes in the **`email`** field. This is the most fragile detail in the whole
+integration:
 
-| Payload | Respuesta |
+| Payload | Response |
 |---|---|
 | `{"email": "...", "password": "..."}` | `200` + token |
 | `{"username": "...", "password": "..."}` | `400 "Unable to log in with provided credentials"` |
 
-No lo cambies sin comprobarlo contra la API real: enviar `username` rompió el login en la v1.3.0
-y hubo que revertirlo en la v1.3.1.
+Do not change it without checking against the live API: sending `username` broke login in v1.3.0
+and had to be reverted in v1.3.1.
 
 ```json
-{ "email": "usuario@ejemplo.com", "password": "…" }
+{ "email": "user@example.com", "password": "…" }
 ```
 
-La respuesta trae el token en `access_token` (el cliente acepta también `token` y `accessToken`).
-Vive alrededor de 1 hora; el cliente lo renueva a los **50 minutos** (`TOKEN_LIFETIME` en
-`client.py`).
+The response carries the token in `access_token` (the client also accepts `token` and
+`accessToken`). It lives for roughly one hour; the client renews it after **50 minutes**
+(`TOKEN_LIFETIME` in `client.py`).
 
-Ante `429` el cliente reintenta con backoff exponencial (5 intentos, tope de 60 s), respetando la
-cabecera `Retry-After` si viene. Tras un login fallido espera `AUTH_FAILURE_COOLDOWN` (300 s)
-antes de reintentar.
+On `429` the client retries with exponential backoff (5 attempts, capped at 60 s), honouring the
+`Retry-After` header when present. After a failed login it waits `AUTH_FAILURE_COOLDOWN` (300 s)
+before retrying.
 
 ## Endpoints
 
 ### `GET /projects/`
 
-Lista de proyectos. Se envían los mismos parámetros que la webapp:
+List of projects. The same query parameters as the webapp are sent:
 
 ```
 page=1  page_size=25  ordering=-start_date  search=  is_oem=false
 ```
 
-De cada elemento de `data[]` el cliente usa `name` y, dentro de `topic`: `id`, `name`, `mode`,
+From each item in `data[]` the client uses `name` and, inside `topic`: `id`, `name`, `mode`,
 `is_stop`, `is_online`, `eco`, `last_sync`.
 
 ### `GET /topics/sensors/`
 
-Lista de sensores (zonas). De cada elemento de `data[]` se usan `id`, `name`, `status`,
-`temperature`, `setpoint_temperature`, `speed`, `updated_at` y el bloque `topic_info` (que aporta
-el `id` del topic y los datos de conectividad: RSSI, online, sincronización).
+List of sensors (zones). From each item in `data[]` the client uses `id`, `name`, `status`,
+`temperature`, `setpoint_temperature`, `speed`, `updated_at` and the `topic_info` block (which
+provides the topic `id` and the connectivity data: RSSI, online, sync).
 
 ### `PUT /topics/sensors/{sensor_id}/`
 
-Actualiza una zona. **Es `PUT`, no `PATCH`** — a diferencia del endpoint de topics.
+Updates one zone. **It is `PUT`, not `PATCH`** — unlike the topics endpoint.
 
-| Payload | Efecto |
+| Payload | Effect |
 |---|---|
-| `{"setpoint_temperature": 24.5}` | Temperatura objetivo |
-| `{"status": "00"}` | Modo de la zona (ver tabla) |
-| `{"speed": "2"}` | Velocidad del ventilador (ver tabla) |
+| `{"setpoint_temperature": 24.5}` | Target temperature |
+| `{"status": "00"}` | Zone mode (see table) |
+| `{"speed": "2"}` | Fan speed (see table) |
 
 ### `PATCH /topics/{topic_id}/`
 
-Actualiza el proyecto completo.
+Updates the whole project.
 
-| Payload | Efecto |
+| Payload | Effect |
 |---|---|
-| `{"mode": "1"}` | Modo global (ver tabla) |
-| `{"eco": true}` | Modo ECO |
-| `{"is_stop": true}` | Parada global |
-| `{"is_online": true}` | Estado online |
+| `{"mode": "1"}` | Global mode (see table) |
+| `{"eco": true}` | ECO mode |
+| `{"is_stop": true}` | Global stop |
+| `{"is_online": true}` | Online state |
 
-## Tablas de códigos
+## Code tables
 
-Definidas en `custom_components/koolnova/const.py`. **Los modos de proyecto y los de zona usan
-codificaciones distintas**; confundirlas es un error fácil de cometer.
+Defined in `custom_components/koolnova/const.py`. **Project modes and zone modes use different
+encodings** — an easy mistake to make.
 
-### Modo de proyecto (`mode`)
+### Project mode (`mode`)
 
-| Código | Modo HA |
+| Code | HA mode |
 |---|---|
 | `"1"` | `cool` |
 | `"2"` | `off` |
 | `"4"` | `heat` |
 | `"6"` | `auto` |
 
-### Estado de zona (`status`)
+### Zone status (`status`)
 
-| Código | Modo HA |
+| Code | HA mode |
 |---|---|
 | `"00"` | `cool` |
 | `"01"` | `heat` |
 | `"02"` | `off` |
 | `"03"` | `auto` |
 
-### Velocidad de ventilador (`speed`)
+### Fan speed (`speed`)
 
-| Código | Velocidad HA |
+| Code | HA speed |
 |---|---|
 | `"1"` | `low` |
 | `"2"` | `medium` |
 | `"3"` | `high` |
 | `"4"` | `auto` |
 
-## Códigos de error
+## Error codes
 
-| Código | Causa habitual |
+| Code | Usual cause |
 |---|---|
-| `400` | Payload mal formado, valor fuera de rango, o `username` en vez de `email` al hacer login |
-| `404` | **Casi siempre, headers de navegador ausentes** — no que la ruta no exista. También ruta sin barra final o ID inexistente |
-| `429` | Límite de peticiones; el cliente reintenta con backoff |
-| `5xx` | API caída; el cliente reintenta con backoff corto |
+| `400` | Malformed payload, value out of range, or `username` instead of `email` on login |
+| `404` | **Almost always missing browser-like headers** — not a missing route. Also a path without a trailing slash, or a non-existent ID |
+| `429` | Rate limited; the client retries with backoff |
+| `5xx` | API down; the client retries with a short backoff |

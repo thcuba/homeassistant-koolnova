@@ -1,63 +1,63 @@
-# Koolnova para Home Assistant
+# Koolnova for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![release](https://img.shields.io/github/v/release/luisgsluis/homeassistant-koolnova)](https://github.com/luisgsluis/homeassistant-koolnova/releases)
 
-Integración personalizada que controla sistemas HVAC **Koolnova** desde Home Assistant, a través de
-su API cloud. Cada zona y el proyecto completo se exponen como entidades `climate`.
+Custom integration that controls **Koolnova** HVAC systems from Home Assistant through their cloud
+API. Every zone, plus the project as a whole, is exposed as a `climate` entity.
 
-- ❄️ Modos HVAC por zona y globales (COOL / HEAT / AUTO / OFF)
-- 🌡️ Consigna de temperatura por zona
-- 🌬️ Velocidad de ventilador por zona
-- 🏠 Control global del proyecto (modo, ECO, parada)
-- 🔄 Polling escalonado: sensores en cada ciclo, proyectos cacheados
-- 🎛️ Configuración e intervalos ajustables desde la UI
+- ❄️ HVAC modes per zone and globally (COOL / HEAT / AUTO / OFF)
+- 🌡️ Target temperature per zone
+- 🌬️ Fan speed per zone
+- 🏠 Global project control (mode, ECO, stop)
+- 🔄 Staggered polling: sensors every cycle, projects cached
+- 🎛️ Setup and intervals configurable from the UI
 
-Requiere Home Assistant 2025.12.0 o superior y una cuenta de la app Koolnova.
+Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
-> ⚠️ Koolnova banea la IP automáticamente si su API recibe más de una consulta cada 30 segundos.
-> Por eso el intervalo mínimo es de 30 s; no lo fuerces por debajo.
+> ⚠️ Koolnova bans your IP automatically if their API receives more than one request every
+> 30 seconds. That is why the minimum interval is 30 s — do not force it lower.
 
-## Instalación
+## Installation
 
-### HACS (recomendado)
+### HACS (recommended)
 
-1. HACS → menú ⋮ → **Repositorios personalizados** → añade
-   `https://github.com/luisgsluis/homeassistant-koolnova` como categoría *Integration*.
-2. Busca **Koolnova**, descárgala y reinicia Home Assistant.
+1. HACS → ⋮ menu → **Custom repositories** → add
+   `https://github.com/luisgsluis/homeassistant-koolnova` with category *Integration*.
+2. Search for **Koolnova**, download it and restart Home Assistant.
 
 ### Manual
 
-Copia `custom_components/koolnova/` dentro del directorio `custom_components` de tu configuración
-y reinicia Home Assistant.
+Copy `custom_components/koolnova/` into the `custom_components` directory of your configuration
+and restart Home Assistant.
 
-## Configuración
+## Configuration
 
-**Ajustes → Dispositivos y servicios → Añadir integración → Koolnova**, con las credenciales de la
-app Koolnova.
+**Settings → Devices & services → Add integration → Koolnova**, using your Koolnova app
+credentials.
 
-Opciones disponibles después, desde *Configurar*:
+Options available afterwards through *Configure*:
 
-| Opción | Por defecto | Rango |
+| Option | Default | Range |
 |---|---|---|
-| Intervalo de actualización | 30 s | 30–3600 s |
-| Frecuencia de refresco de proyectos | cada 10 ciclos | 1–300 |
-| Modos HVAC del proyecto | COOL, HEAT | COOL / HEAT / OFF / AUTO |
-| Modos HVAC de zona | OFF, AUTO | COOL / HEAT / OFF / AUTO |
-| Rango de temperatura | 21–27 °C | 15–35 °C |
-| Precisión de temperatura | 0,5 °C | 0,5 o 1 °C |
+| Update interval | 30 s | 30–3600 s |
+| Project refresh frequency | every 10 cycles | 1–300 |
+| Project HVAC modes | COOL, HEAT | COOL / HEAT / OFF / AUTO |
+| Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
+| Temperature range | 21–27 °C | 15–35 °C |
+| Temperature precision | 0.5 °C | 0.5 or 1 °C |
 
-## Documentación
+## Documentation
 
-- [CHANGELOG.md](CHANGELOG.md) — historial de versiones
-- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — problemas frecuentes
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — arquitectura, entorno de pruebas y releases
-- [docs/API.md](docs/API.md) — la API de Koolnova, documentada por ingeniería inversa
+- [CHANGELOG.md](CHANGELOG.md) — version history
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common problems
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — architecture, test environment and releases
+- [docs/API.md](docs/API.md) — the Koolnova API, documented by reverse engineering
 
-## Aviso
+## Disclaimer
 
-Proyecto no oficial, sin relación con Koolnova. Usa una API no documentada que su fabricante puede
-cambiar o cerrar en cualquier momento. El cliente REST incluido en `koolnova_api/` es un fork del
-paquete `koolnova-api`, con crédito a su autor original.
+Unofficial project, not affiliated with Koolnova. It relies on an undocumented API that the
+manufacturer may change or shut down at any time. The REST client bundled in `koolnova_api/` is a
+fork of the `koolnova-api` package, with credit to its original author.
 
-Licencia MIT · [Issues](https://github.com/luisgsluis/homeassistant-koolnova/issues)
+MIT licensed · [Issues](https://github.com/luisgsluis/homeassistant-koolnova/issues)

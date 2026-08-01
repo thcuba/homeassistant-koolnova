@@ -1,114 +1,113 @@
-# Desarrollo
+# Development
 
-Cómo está construida la integración, cómo probarla y cómo publicar una versión.
-Para la API de Koolnova ver [API.md](API.md); para problemas de uso, [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+How the integration is built, how to test it, and how to publish a version.
+For the Koolnova API see [API.md](API.md); for usage problems, [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-## Arquitectura
+## Architecture
 
 ```
 custom_components/koolnova/
-├── __init__.py        setup/unload del config entry, crea el coordinator
-├── config_flow.py     alta por UI (credenciales) y opciones
-├── const.py           DOMAIN, límites, mapeos código Koolnova <-> modo HA
-├── coordinator.py     DataUpdateCoordinator: hace el polling
-├── climate.py         entidades: proyecto (global) y zona (por habitación)
-├── manifest.json      la versión debe coincidir con el tag de git
-├── brand/             icono y logo servidos por HA (ver su README)
-└── koolnova_api/      cliente REST vendorizado
+├── __init__.py        config entry setup/unload, creates the coordinator
+├── config_flow.py     UI setup (credentials) and options
+├── const.py           DOMAIN, limits, Koolnova code <-> HA mode mappings
+├── coordinator.py     DataUpdateCoordinator: does the polling
+├── climate.py         entities: project (global) and zone (per room)
+├── manifest.json      version must match the git tag
+├── brand/             icon and logo served by HA (see its README)
+└── koolnova_api/      vendored REST client
     ├── client.py      get_project, get_sensors, update_sensor, update_project
-    ├── session.py     login y ciclo de vida del token
-    ├── const.py       URLs y headers obligatorios
+    ├── session.py     login and token lifecycle
+    ├── const.py       URLs and required headers
     └── exceptions.py  KoolnovaError
 ```
 
-### Cliente API vendorizado — regla de imports
+### Vendored API client — the import rule
 
-`koolnova_api/` es un fork local del cliente `koolnova-api` (crédito al autor original). Vive
-dentro del repositorio y **no** es una dependencia PyPI, porque el paquete `koolnova-api` (con
-guión) colisionaba con el módulo local, que antes se llamaba `koolnovaapi` (sin guión), y provocaba
-errores 404 en todas las llamadas.
+`koolnova_api/` is a local fork of the `koolnova-api` client (credit to the original author). It
+lives inside the repository and is **not** a PyPI dependency, because the `koolnova-api` package
+(hyphen) collided with the local module — previously named `koolnovaapi` (no separator) — and
+caused 404 errors on every call.
 
 ```python
 from .koolnova_api.client import KoolnovaAPIRestClient   # ✅
-from koolnovaapi.client import KoolnovaAPIRestClient     # ❌ rompe la integración
+from koolnovaapi.client import KoolnovaAPIRestClient     # ❌ breaks the integration
 ```
 
-Nunca reintroduzcas un import absoluto de `koolnova_api` ni añadas el paquete PyPI a
-`manifest.json`. Tras tocar imports, limpia la caché de Python (`__pycache__`) antes de probar.
+Never reintroduce an absolute `koolnova_api` import, and never add the PyPI package to
+`manifest.json`. After touching imports, clear the Python cache (`__pycache__`) before testing.
 
-### Dos ámbitos de entidad
+### Two entity scopes
 
-`climate.py` expone dos clases que traducen a través de los mapeos de `const.py`
-(`KOOLNOVA_TO_HVAC_MODE`, `KOOLNOVA_ZONE_STATUS_TO_HVAC`, `KOOLNOVA_TO_FAN` y sus inversos
-autogenerados):
+`climate.py` exposes two classes that translate through the mappings in `const.py`
+(`KOOLNOVA_TO_HVAC_MODE`, `KOOLNOVA_ZONE_STATUS_TO_HVAC`, `KOOLNOVA_TO_FAN` and their
+auto-generated inverses):
 
-- `KoolnovaProjectEntity` — el proyecto completo: modo HVAC global, ECO, parada.
-- `KoolnovaZoneEntity` — una por sensor/habitación: consigna, estado, velocidad de ventilador.
+- `KoolnovaProjectEntity` — the whole project: global HVAC mode, ECO, stop.
+- `KoolnovaZoneEntity` — one per sensor/room: setpoint, status, fan speed.
 
-### Polling a dos ritmos
+### Two polling rates
 
-El coordinator refresca los **sensores** en cada ciclo, pero la lista de **proyectos** (más cara)
-solo cada `project_update_frequency` ciclos, cacheando el resto (`DEFAULT_PROJECT_UPDATE_FREQUENCY`
-= 10 en `const.py`).
+The coordinator refreshes **sensors** every cycle, but the (more expensive) **project** list only
+every `project_update_frequency` cycles, caching the rest (`DEFAULT_PROJECT_UPDATE_FREQUENCY` = 10
+in `const.py`).
 
-Los cambios de opciones (intervalo, modos ofrecidos, rango de temperatura) recargan la
-configuración del coordinator sin recargar el config entry entero (`async_reload_entry` en
-`__init__.py`).
+Option changes (interval, offered modes, temperature range) reload the coordinator's configuration
+without reloading the whole config entry (`async_reload_entry` in `__init__.py`).
 
-### Límites impuestos por Koolnova
+### Limits imposed by Koolnova
 
-Koolnova banea la IP automáticamente si se consulta más de una vez cada 30 s, y también ante
-logins fallidos repetidos. De ahí que `MIN_UPDATE_INTERVAL` sea 30 s (el coordinator recorta a
-ese valor las configuraciones antiguas más agresivas) y que exista un cooldown de 300 s tras un
-login fallido. **No bajes estos límites.**
+Koolnova bans your IP automatically if their API is polled more often than once every 30 s, and
+also on repeated failed logins. Hence `MIN_UPDATE_INTERVAL` is 30 s (the coordinator clamps older,
+more aggressive configurations to it) and a 300 s cooldown exists after a failed login. **Do not
+lower these limits.**
 
-## Entorno de pruebas
+## Test environment
 
-No hay suite de tests: la integración solo se ejercita de verdad contra una instancia real de Home
-Assistant y una cuenta Koolnova real.
+There is no test suite: the integration can only really be exercised against a live Home Assistant
+instance and a real Koolnova account.
 
-Hubo un directorio `tests/` con scripts de exploración de la API que llevaban credenciales en
-texto plano; se purgó del historial en la v1.2.6. **No recrees ese patrón**: si añades tests, usa
-respuestas HTTP mockeadas, nunca credenciales reales.
+A `tests/` directory once held API exploration scripts with plaintext credentials; it was purged
+from history in v1.2.6. **Do not recreate that pattern** — if you add tests, use mocked HTTP
+responses, never real credentials.
 
-El desarrollo se hace contra una instancia de HA en Docker, editando la integración directamente
-en su directorio de configuración:
+Development happens against a Home Assistant instance in Docker, editing the integration directly
+in its configuration directory:
 
 ```bash
 $HOME/docker/homeassistant/config/custom_components/koolnova
 docker restart homeassistant
 ```
 
-### Antes de hacer push
+### Before pushing
 
 1. `docker restart homeassistant`
-2. Sin errores en `docker logs homeassistant` ni en `home-assistant.log`.
-3. El alta desde la UI funciona.
-4. Las entidades `climate.koolnova_*` responden: temperatura, modo y ventilador.
+2. No errors in `docker logs homeassistant` or in `home-assistant.log`.
+3. Setup from the UI works.
+4. The `climate.koolnova_*` entities respond: temperature, mode and fan.
 
-## Publicar una release
+## Publishing a release
 
-HACS instala directamente desde el repositorio de GitHub, así que la raíz tiene que mantener la
-forma estándar: `custom_components/koolnova/`, `hacs.json` y `README.md` en su sitio, sin ZIPs ni
+HACS installs straight from the GitHub repository, so the root must keep the standard shape:
+`custom_components/koolnova/`, `hacs.json` and `README.md` where they are, with no ZIPs and no
 `zip_release`.
 
-> **El tag y el campo `"version"` de `manifest.json` deben ser idénticos.** Si no coinciden, HACS
-> falla con `Downloading … failed with (No content to download)`. Tag `v1.3.2` ↔ versión `1.3.2`
-> (el prefijo `v` solo va en el tag). No publiques releases cuyo nombre o tag no correspondan a la
-> versión del manifest: quedan como "latest" y rompen la instalación.
+> **The tag and the `"version"` field in `manifest.json` must be identical.** If they differ, HACS
+> fails with `Downloading … failed with (No content to download)`. Tag `v1.3.2` ↔ version `1.3.2`
+> (the `v` prefix belongs to the tag only). Never publish a release whose tag or name does not
+> match the manifest version: it becomes "latest" and breaks installs for everyone.
 
-1. Actualiza `"version"` en `custom_components/koolnova/manifest.json`.
-2. Añade la entrada correspondiente en [CHANGELOG.md](../CHANGELOG.md).
+1. Bump `"version"` in `custom_components/koolnova/manifest.json`.
+2. Add the matching entry to [CHANGELOG.md](../CHANGELOG.md).
 3. `git commit -m "vX.Y.Z: …"`
 4. `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
 5. `git push origin main --tags`
-6. Crea la release en GitHub desde ese tag, sin assets propios.
+6. Create the GitHub release from that tag, with no custom assets.
 
 ### `hacs.json`
 
-Solo admite un conjunto reducido de claves. Los metadatos de la integración (`domain`,
-`config_flow`, `iot_class`, `integration_type`…) van en `manifest.json`; si se ponen aquí, el
-check `hacsjson` falla con *extra keys not allowed*.
+Only a small set of keys is allowed. Integration metadata (`domain`, `config_flow`, `iot_class`,
+`integration_type`…) belongs in `manifest.json`; putting it here makes the `hacsjson` check fail
+with *extra keys not allowed*.
 
 ```json
 {

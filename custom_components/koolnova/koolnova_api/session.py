@@ -145,7 +145,7 @@ class KoolnovaClientSession(Session):
             "Cache-Control": "no-cache",
             "User-Agent": FULL_USER_AGENT,
         }
-        # Fusionner les headers passés en argument
+        # Merge in the headers passed as an argument
         headers = kwargs.pop("headers", {})
         headers_auth.update(headers)
 

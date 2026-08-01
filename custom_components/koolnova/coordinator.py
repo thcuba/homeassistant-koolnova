@@ -59,7 +59,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         self.config_entry = config_entry
         self.data = {"projects": [], "sensors": []}
 
-        # Contador para actualizaciones periódicas de proyectos
+        # Counter driving the periodic project refresh
         self._project_update_counter = 0
         self._project_update_frequency = options_data.get(
             CONF_PROJECT_UPDATE_FREQUENCY,
@@ -138,7 +138,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     self._project_update_counter = 0  # Reset counter
                     result = await self.hass.async_add_executor_job(self._fetch_data)
                     
-                    # Disparar evento después de actualización completa
+                    # Fire an event after a full update
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "full",
                         "success": True,
@@ -156,7 +156,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                                 self._project_update_counter, self._project_update_frequency)
                     result = await self.hass.async_add_executor_job(self._fetch_sensors_only)
                     
-                    # Disparar evento después de actualización parcial (solo sensores)
+                    # Fire an event after a partial update (sensors only)
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "sensors_only",
                         "success": True,
@@ -173,7 +173,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 self._project_update_counter = 0
                 result = await self.hass.async_add_executor_job(self._fetch_data)
                 
-                # Disparar evento después de setup inicial
+                # Fire an event after the initial setup
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "initial",
                     "success": True,
@@ -208,7 +208,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     # No cached data available, re-raise to trigger proper error handling
                     
-                    # Disparar evento de error crítico
+                    # Fire a critical error event
                     self.hass.bus.async_fire("koolnova_update_completed", {
                         "update_type": "failed",
                         "success": False,
@@ -221,7 +221,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 # Re-raise other errors
                 
-                # Disparar evento de error genérico
+                # Fire a generic error event
                 self.hass.bus.async_fire("koolnova_update_completed", {
                     "update_type": "failed",
                     "success": False,

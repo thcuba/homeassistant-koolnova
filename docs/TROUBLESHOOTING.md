@@ -1,60 +1,61 @@
-# Solución de problemas
+# Troubleshooting
 
-Problemas habituales al usar la integración. Si vas a tocar el código, mira antes
-[DEVELOPMENT.md](DEVELOPMENT.md) y [API.md](API.md).
+Common problems when using the integration. If you are going to touch the code, read
+[DEVELOPMENT.md](DEVELOPMENT.md) and [API.md](API.md) first.
 
-## Antes de nada: no reintentes en bucle
+## First of all: do not retry in a loop
 
-Koolnova **banea tu IP automáticamente** si su API recibe más de una consulta cada 30 segundos, o
-si detecta logins fallidos repetidos. Si algo falla, no recargues la integración una y otra vez ni
-bajes el intervalo de actualización: espera unos minutos entre intentos. Un ban se manifiesta como
-errores de conexión que no se arreglan aunque las credenciales sean correctas.
+Koolnova **bans your IP automatically** if their API receives more than one request every
+30 seconds, or if it detects repeated failed logins. When something fails, do not reload the
+integration over and over and do not lower the update interval: wait a few minutes between
+attempts. A ban shows up as connection errors that persist even though the credentials are correct.
 
-## La integración no se conecta / errores 404 en los logs
+## The integration cannot connect / 404 errors in the logs
 
-Un `404` de esta API casi nunca significa que la ruta no exista: significa que la petición no
-parecía venir de un navegador. La API exige un `User-Agent` de Chrome moderno y los headers
-`sec-ch-ua*` / `sec-fetch-*` (ver `koolnova_api/const.py`).
+A `404` from this API almost never means the route does not exist: it means the request did not
+look like it came from a browser. The API requires a modern Chrome `User-Agent` and the
+`sec-ch-ua*` / `sec-fetch-*` headers (see `koolnova_api/const.py`).
 
-Si empieza a fallar de golpe sin haber cambiado nada, lo más probable es que Koolnova haya vuelto
-a endurecer ese filtro — pasó en mayo de 2026 (issue #4). Abre una incidencia.
+If it starts failing out of nowhere without any change on your side, Koolnova has most likely
+tightened that filter again — it happened in May 2026 (issue #4). Please open an issue.
 
-## "Authentication failed" al configurar
+## "Authentication failed" during setup
 
-- Comprueba usuario y contraseña entrando en la app oficial de Koolnova.
-- El login usa el campo `email`; si has tocado el cliente y lo has cambiado a `username`, la API
-  responde `400 "Unable to log in with provided credentials"` (ver [API.md](API.md#autenticación)).
-- Tras un fallo de login la integración espera 5 minutos antes de reintentar, a propósito. No es
-  un cuelgue.
+- Check your username and password by signing in to the official Koolnova app.
+- Login uses the `email` field; if you modified the client to send `username`, the API answers
+  `400 "Unable to log in with provided credentials"` (see [API.md](API.md#authentication)).
+- After a failed login the integration waits 5 minutes before retrying, on purpose. It is not
+  stuck.
 
 ## "No projects found"
 
-La cuenta no tiene ningún proyecto activo. Créalo primero en la app de Koolnova.
+The account has no active project. Create one in the Koolnova app first.
 
-## Las entidades aparecen como "unavailable"
+## Entities show as "unavailable"
 
-Por orden de probabilidad:
+In order of likelihood:
 
-1. El proyecto está offline (`is_online: false`) — compruébalo en la app oficial.
-2. El coordinator no consigue actualizar: mira los logs.
-3. Problema de autenticación o token caducado; reinicia Home Assistant.
+1. The project is offline (`is_online: false`) — check it in the official app.
+2. The coordinator cannot update: check the logs.
+3. Authentication problem or expired token; restart Home Assistant.
 
-Si persiste, elimina la integración desde la UI, reinicia HA y vuelve a añadirla.
+If it persists, delete the integration from the UI, restart HA and add it again.
 
-## Los cambios no se aplican
+## Changes are not applied
 
-- **Temperatura fuera de rango**: ajusta `min_temp` / `max_temp` en las opciones de la integración.
-- El estado que muestra HA viene de la última lectura cacheada; con el intervalo en 30 s puede
-  tardar en reflejar un cambio hecho desde la app oficial.
+- **Temperature out of range**: adjust `min_temp` / `max_temp` in the integration options.
+- The state HA shows comes from the last cached read; with a 30 s interval it can lag behind a
+  change made from the official app.
 
 ## HACS: "No content to download"
 
-El tag de la release y el campo `"version"` de `manifest.json` no coinciden. Es un fallo de
-empaquetado, no tuyo: repórtalo. Ver [DEVELOPMENT.md](DEVELOPMENT.md#publicar-una-release).
+The release tag and the `"version"` field in `manifest.json` do not match. That is a packaging
+mistake, not something you did: please report it. See
+[DEVELOPMENT.md](DEVELOPMENT.md#publishing-a-release).
 
-## Recoger información para un issue
+## Collecting information for an issue
 
-Activa el log de depuración en `configuration.yaml`:
+Enable debug logging in `configuration.yaml`:
 
 ```yaml
 logger:
@@ -62,9 +63,9 @@ logger:
     custom_components.koolnova: debug
 ```
 
-Reinicia HA, reproduce el problema y adjunta al
-[issue](https://github.com/luisgsluis/homeassistant-koolnova/issues) la versión de Home Assistant,
-la de la integración y los logs relevantes.
+Restart HA, reproduce the problem, and attach your Home Assistant version, the integration version
+and the relevant logs to the
+[issue](https://github.com/luisgsluis/homeassistant-koolnova/issues).
 
-> Los logs de depuración no incluyen la contraseña ni el token desde la v1.3.0, pero **sí** los
-> nombres de tus proyectos y zonas. Revísalos antes de publicarlos.
+> Debug logs no longer include your password or token as of v1.3.0, but they **do** include your
+> project and zone names. Review them before posting.
