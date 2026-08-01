@@ -1,119 +1,70 @@
-# Troubleshooting Koolnova Integration
+# Solución de problemas
 
-## 🚨 Problema Crítico Resuelto: Conflicto de Imports
+Problemas habituales al usar la integración. Si vas a tocar el código, mira antes
+[DEVELOPMENT.md](DEVELOPMENT.md) y [API.md](API.md).
 
-### Síntomas Anteriores
-- Error: `ModuleNotFoundError: No module named 'koolnovaapi'`
-- Error 404 en todas las operaciones API
-- Integración no carga en Home Assistant
+## Antes de nada: no reintentes en bucle
 
-### Causa Raíz
-Conflicto entre:
-- **Paquete PyPI**: `koolnova-api` (con guión) - causaba errores 404
-- **Módulo local**: `koolnovaapi` (sin guión) - código fuente
+Koolnova **banea tu IP automáticamente** si su API recibe más de una consulta cada 30 segundos, o
+si detecta logins fallidos repetidos. Si algo falla, no recargues la integración una y otra vez ni
+bajes el intervalo de actualización: espera unos minutos entre intentos. Un ban se manifiesta como
+errores de conexión que no se arreglan aunque las credenciales sean correctas.
 
-### Solución Aplicada
-✅ **Eliminado paquete PyPI conflictivo**
-✅ **Renombrado módulo local** a `koolnova_api`
-✅ **Implementados imports relativos** (`from .koolnova_api.client import ...`)
-✅ **Agregado `__init__.py`** al directorio del módulo
+## La integración no se conecta / errores 404 en los logs
 
-### Verificación
-- Integración carga sin errores
-- Todas las operaciones API funcionan correctamente
-- Logs muestran actividad normal del coordinator
+Un `404` de esta API casi nunca significa que la ruta no exista: significa que la petición no
+parecía venir de un navegador. La API exige un `User-Agent` de Chrome moderno y los headers
+`sec-ch-ua*` / `sec-fetch-*` (ver `koolnova_api/const.py`).
 
-## Errores Comunes
+Si empieza a fallar de golpe sin haber cambiado nada, lo más probable es que Koolnova haya vuelto
+a endurecer ese filtro — pasó en mayo de 2026 (issue #4). Abre una incidencia.
 
-### Error 404/400 en API (Falta User-Agent)
+## "Authentication failed" al configurar
 
-**Síntomas**:
-- Integración no puede conectarse
-- Errores "Not Found" o "Bad Request" en logs
+- Comprueba usuario y contraseña entrando en la app oficial de Koolnova.
+- El login usa el campo `email`; si has tocado el cliente y lo has cambiado a `username`, la API
+  responde `400 "Unable to log in with provided credentials"` (ver [API.md](API.md#autenticación)).
+- Tras un fallo de login la integración espera 5 minutos antes de reintentar, a propósito. No es
+  un cuelgue.
 
-**Causa**:
-- La API requiere header `User-Agent: Mozilla/5.0`
-- Headers incompletos en requests
+## "No projects found"
 
-**Solución**:
-- Verificar que el cliente API incluye todos los headers requeridos
-- Revisar `koolnova_api/client.py` para configuración de headers
+La cuenta no tiene ningún proyecto activo. Créalo primero en la app de Koolnova.
 
-### Config Flow Errors
+## Las entidades aparecen como "unavailable"
 
-**Error**: "Authentication failed"
-- **Causa**: Credenciales incorrectas
-- **Solución**: Verificar email/contraseña en app Koolnova
+Por orden de probabilidad:
 
-**Error**: "No projects found"
-- **Causa**: Usuario sin proyectos activos
-- **Solución**: Crear proyecto en app Koolnova
+1. El proyecto está offline (`is_online: false`) — compruébalo en la app oficial.
+2. El coordinator no consigue actualizar: mira los logs.
+3. Problema de autenticación o token caducado; reinicia Home Assistant.
 
-### Coordinator Update Failures
+Si persiste, elimina la integración desde la UI, reinicia HA y vuelve a añadirla.
 
-**Error**: "Update failed" en logs
-- **Causa**: Problemas de conectividad o API temporalmente down
-- **Solución**: Verificar conexión a internet y estado de app Koolnova
+## Los cambios no se aplican
 
-**Error**: "Unexpected error"
-- **Causa**: Cambios en API de Koolnova
-- **Solución**: Verificar compatibilidad de versión
+- **Temperatura fuera de rango**: ajusta `min_temp` / `max_temp` en las opciones de la integración.
+- El estado que muestra HA viene de la última lectura cacheada; con el intervalo en 30 s puede
+  tardar en reflejar un cambio hecho desde la app oficial.
 
-### Entidades No Disponibles
+## HACS: "No content to download"
 
-**Síntomas**:
-- Entidades climate aparecen como "unavailable"
+El tag de la release y el campo `"version"` de `manifest.json` no coinciden. Es un fallo de
+empaquetado, no tuyo: repórtalo. Ver [DEVELOPMENT.md](DEVELOPMENT.md#publicar-una-release).
 
-**Causas posibles**:
-- Proyecto offline (`is_online: false`)
-- Coordinator no actualiza datos
-- Problemas de autenticación
+## Recoger información para un issue
 
-**Solución**:
-- Verificar estado del proyecto en app Koolnova
-- Reiniciar HA: `docker restart homeassistant`
-- Reconfigurar integración
+Activa el log de depuración en `configuration.yaml`:
 
-### Problemas de Control
-
-**Error**: Cambios no se aplican
-- **Causa**: Payloads incorrectos o límites excedidos
-- **Solución**: Verificar rangos de temperatura y códigos válidos
-
-**Error**: "Temperature out of range"
-- **Causa**: Temperatura fuera de límites configurados
-- **Solución**: Ajustar `min_temp`/`max_temp` en opciones
-
-## Debugging Avanzado
-
-### Verificar Datos del Coordinator
-
-En Developer Tools > States, buscar entidades `climate.koolnova_*`
-
-Atributos útiles:
-- `online_status`
-- `last_sync`
-- `total_zones`
-
-### Test Manual de API
-
-Usar curl para probar endpoints:
-
-```bash
-curl -H "User-Agent: Mozilla/5.0" \
-     -H "Authorization: Bearer YOUR_TOKEN" \
-     https://api.koolnova.com/projects/
+```yaml
+logger:
+  logs:
+    custom_components.koolnova: debug
 ```
 
-### Reset de Integración
+Reinicia HA, reproduce el problema y adjunta al
+[issue](https://github.com/luisgsluis/homeassistant-koolnova/issues) la versión de Home Assistant,
+la de la integración y los logs relevantes.
 
-1. Remover integración en HA UI
-2. Reiniciar HA
-3. Reinstalar integración
-4. Reconfigurar con credenciales
-
-## Contacto y Soporte
-
-- **Issues**: https://github.com/luisgsluis/homeassistant-koolnova/issues
-- **Logs**: Incluir logs relevantes al reportar bugs
-- **Versión**: Especificar versión de HA y integración
+> Los logs de depuración no incluyen la contraseña ni el token desde la v1.3.0, pero **sí** los
+> nombres de tus proyectos y zonas. Revísalos antes de publicarlos.

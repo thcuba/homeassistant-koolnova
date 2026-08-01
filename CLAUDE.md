@@ -25,7 +25,10 @@ custom_components/koolnova/   ← the actual integration (domain "koolnova")
     ├── exceptions.py           KoolnovaError
     └── const.py                COMMON_HEADERS / PATCH_HEADERS required by the API
 hacs.json                      HACS metadata, "domain" MUST match manifest.json
-docs/                          architecture, API reference, release process, troubleshooting
+CHANGELOG.md                   version history; add an entry in the release commit
+docs/DEVELOPMENT.md            architecture, test environment, release process
+docs/API.md                    reverse-engineered Koolnova API reference
+docs/TROUBLESHOOTING.md        user-facing problems
 ```
 
 Root must stay HACS-standard: no custom zips, no `zip_release`. HACS installs straight from the
@@ -38,7 +41,7 @@ the paths shown above.
   `koolnova-api` (hyphen), which collided with the local module `koolnovaapi` and caused 404s. It is
   now a local package named `koolnova_api` (underscore), imported only via relative imports
   (`from .koolnova_api.client import ...`). Never reintroduce an absolute `import koolnova_api` or
-  add the PyPI package as a dependency — see `docs/ARCHITECTURE.md` and `docs/TROUBLESHOOTING.md`.
+  add the PyPI package as a dependency — see `docs/DEVELOPMENT.md`.
 - **Two entity scopes.** `climate.py` has `KoolnovaProjectEntity` (controls the whole project: global
   HVAC mode, eco, stop) and `KoolnovaZoneEntity` (one per sensor/room: setpoint, status, fan speed).
   Both translate through the code maps in `const.py` (`KOOLNOVA_TO_HVAC_MODE`,
@@ -57,12 +60,16 @@ the paths shown above.
 ## Releases (HACS versioning)
 
 The tag and `manifest.json`'s `"version"` **must be identical** (no `v` prefix mismatch) or HACS
-fails with "No content to download". Process, documented in `docs/RELEASE.md`:
+fails with "No content to download". Process, documented in `docs/DEVELOPMENT.md`:
 
 1. Bump `"version"` in `custom_components/koolnova/manifest.json`.
-2. Commit, then `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
-3. `git push origin main --tags`.
-4. Create the GitHub release from that tag (standard GitHub release, no custom zip assets).
+2. Add the matching entry to `CHANGELOG.md`.
+3. Commit, then `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
+4. `git push origin main --tags`.
+5. Create the GitHub release from that tag (standard GitHub release, no custom zip assets).
+
+Never publish a release whose tag/name does not match the manifest version: it becomes "latest"
+and breaks HACS installs for everyone (a stray `v1.2.1-fixed` release did exactly this).
 
 ## Working here
 
