@@ -7,3 +7,6 @@ __pycache__/
 .vscode/settings.json
 .env
 .github_token
+
+# Local working notes, never published
+*.local.md
