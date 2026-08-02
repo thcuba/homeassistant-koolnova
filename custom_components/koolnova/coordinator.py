@@ -118,10 +118,12 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         - success: boolean indicating if the update was successful
         - timestamp: timestamp of when the update occurred
         - entry_id: unique identifier for this integration instance
-        - last_sync: timestamp of the last synchronization
+        - lastsync: the project's own "last_sync" timestamp, i.e. when the Koolnova system
+          last synchronised (not when we polled it). Absent from "failed" events, and None
+          when there is no project data to read it from.
         - projects_count: number of projects (for full/initial updates)
         - sensors_count: number of sensors (for full/sensors_only updates)
-        - error: error message (for failed updates)
+        - error: error message (for failed/cached updates)
 
         Returns:
             dict: Data structure with 'projects' and 'sensors' keys
