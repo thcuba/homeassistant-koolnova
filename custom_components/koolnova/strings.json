@@ -48,7 +48,7 @@
             "name": "Zone Mode",
             "state": {
               "off": "Off",
-              "auto": "Auto"
+              "auto": "On"
             }
           }
         }
@@ -81,6 +81,12 @@
               "planning": "Planning"
             }
           }
+        }
+      },
+      "koolnova_zone": {
+        "state": {
+          "auto": "On",
+          "off": "Off"
         }
       }
     },

@@ -61,6 +61,19 @@ class TranslationFilesTest(unittest.TestCase):
             with self.subTest(file=path.name):
                 self.assertEqual(expected - keys(_load(path)), set())
 
+    def test_zone_state_translations_live_under_entity_climate(self):
+        """Zone modes are relabelled via `entity.climate.koolnova_zone.state`.
+
+        The frontend resolves entity-state overrides as
+        `component.<platform>.entity.<domain>.<translation_key>.state.<state>`
+        (the `entity` category). Under `entity_component` they are silently
+        ignored and the thermostat card keeps showing "Auto".
+        """
+        for path in [STRINGS, *TRANSLATIONS]:
+            with self.subTest(file=path.name):
+                states = _load(path)["entity"]["climate"]["koolnova_zone"]["state"]
+                self.assertEqual(set(states), {"auto", "off"})
+
 
 class AttributeKeyTest(unittest.TestCase):
     def test_declared_attribute_keys_are_snake_case(self):

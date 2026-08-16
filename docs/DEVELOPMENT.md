@@ -108,6 +108,59 @@ docker restart homeassistant
 3. Setup from the UI works.
 4. The `climate.koolnova_*` entities respond: temperature, mode and fan.
 
+### Verifying Lovelace rendering with Playwright
+
+The unit suite cannot exercise the Lovelace dashboard, and visual bugs there are expensive to chase
+blind (e.g. `stack` is **not** a valid card type — the registered type is `vertical-stack`). When a
+dashboard change must be verified, render it headlessly with Playwright instead of asking the user
+to reload:
+
+```python
+# Requires: pip install playwright, a chromium (e.g. /usr/bin/chromium), and
+# a long-lived HA token. Injects hassTokens so no login is needed.
+import json, time
+from playwright.sync_api import sync_playwright
+
+TOKEN = open("/home/admin/.config/ha-token").read().strip()
+BASE = "http://localhost:8123"  # or the Pi's LAN IP
+
+tokens = {
+    "hassUrl": BASE, "clientId": BASE + "/",
+    "access_token": TOKEN, "refresh_token": TOKEN,
+    "expires": int(time.time() * 1000) + 10 * 365 * 24 * 3600 * 1000,
+    "token_type": "Bearer",
+}
+init = f"localStorage.setItem('hassTokens', JSON.stringify({json.dumps(tokens)}))"
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(executable_path="/usr/bin/chromium", headless=True,
+                                args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"])
+    ctx = browser.new_context()
+    ctx.add_init_script(init)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/control-timbre/clima", wait_until="domcontentloaded")
+    page.wait_for_timeout(15000)
+    # Walk shadow DOM (DocumentFragment shadow roots have nodeType 11) to read cards.
+    page.screenshot(path="/tmp/ha_dash.png")
+    browser.close()
+```
+
+Two gotchas that cost real debugging time:
+
+- **Shadow roots are `DocumentFragment` (nodeType 11).** A walker that only descends into element
+  and text nodes finds *nothing* inside web components — descend into every `node.shadowRoot` and
+  iterate `childNodes` for fragments too. `document.querySelector("hui-view")` never pierces shadow
+  DOM either.
+- **A broken card type renders `HUI-ERROR-CARD` with "Error de configuración".** The error string
+  `unknown type encountered: X` means `X` is not a registered Lovelace card type in this HA version
+  (`stack` → use `vertical-stack`; `tile`/`grid`/`thermostat` are valid). Count `HUI-ERROR-CARD`
+  nodes and dump their text to see exactly which card failed and why.
+
+Entity-state relabels for custom entities follow the same rule: the frontend looks up
+`component.<platform>.entity.<domain>.<translation_key>.state.<state>` (the `entity` category), so
+the override must live under `"entity": {"climate": {"<translation_key>": {"state": {...}}}}` in
+`strings.json` / `translations/*.json` — placing it under `entity_component` is silently ignored.
+
 ## Publishing a release
 
 HACS installs straight from the GitHub repository, so the root must keep the standard shape:

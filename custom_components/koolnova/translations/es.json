@@ -48,7 +48,7 @@
             "name": "Modo Zonas",
             "state": {
               "off": "Apagado",
-              "auto": "Auto"
+              "auto": "Encendido"
             }
           }
         }
@@ -82,6 +82,12 @@
             }
           }
         }
+      },
+      "koolnova_zone": {
+        "state": {
+          "auto": "Encendido",
+          "off": "Apagado"
+        }
       }
     },
     "sensor": {
@@ -106,14 +112,6 @@
     "binary_sensor": {
       "connectivity_status": {
         "name": "Estado de Conectividad"
-      }
-    }
-  },
-  "entity_component": {
-    "koolnova_zone": {
-      "state": {
-        "auto": "Encendido",
-        "off": "Apagado"
       }
     }
   }

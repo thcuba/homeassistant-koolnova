@@ -48,7 +48,7 @@
             "name": "Modalità zona",
             "state": {
               "off": "Spento",
-              "auto": "Automatico"
+              "auto": "Acceso"
             }
           }
         }
@@ -82,6 +82,12 @@
             }
           }
         }
+      },
+      "koolnova_zone": {
+        "state": {
+          "auto": "Acceso",
+          "off": "Spento"
+        }
       }
     },
     "sensor": {
@@ -106,14 +112,6 @@
     "binary_sensor": {
       "connectivity_status": {
         "name": "Stato di connettività"
-      }
-    }
-  },
-  "entity_component": {
-    "koolnova_zone": {
-      "state": {
-        "auto": "Acceso",
-        "off": "Spento"
       }
     }
   }

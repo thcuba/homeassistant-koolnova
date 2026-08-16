@@ -48,7 +48,7 @@
             "name": "Zone Mode",
             "state": {
               "off": "Off",
-              "auto": "Auto"
+              "auto": "On"
             }
           }
         }
@@ -82,6 +82,12 @@
             }
           }
         }
+      },
+      "koolnova_zone": {
+        "state": {
+          "auto": "On",
+          "off": "Off"
+        }
       }
     },
     "sensor": {
@@ -106,14 +112,6 @@
     "binary_sensor": {
       "connectivity_status": {
         "name": "Connectivity Status"
-      }
-    }
-  },
-  "entity_component": {
-    "koolnova_zone": {
-      "state": {
-        "auto": "On",
-        "off": "Off"
       }
     }
   }
