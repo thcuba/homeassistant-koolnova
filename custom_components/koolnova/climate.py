@@ -422,7 +422,12 @@ class KoolnovaZoneEntity(ClimateEntity):
         self._sensor_id = sensor["Room_id"]
         self._attr_name = f"Koolnova {sensor['Room_Name']}"
         self._attr_unique_id = f"{config_entry.entry_id}_zone_{sensor['Room_id']}"
-        self._attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
+        self._attr_supported_features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE |
+            ClimateEntityFeature.FAN_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
+        )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
 
@@ -609,6 +614,21 @@ class KoolnovaZoneEntity(ClimateEntity):
         except Exception as err:
             _LOGGER.error("Error updating zone HVAC mode for %s: %s", self._attr_name, err)
             async_create(self.hass, f"Error updating zone HVAC mode: {err}", title="Koolnova")
+
+    async def async_turn_on(self):
+        """Turn the zone on (AUTO, or the first configured non-off mode)."""
+        if HVACMode.AUTO in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.AUTO)
+        else:
+            for mode in self.hvac_modes:
+                if mode != HVACMode.OFF:
+                    await self.async_set_hvac_mode(mode)
+                    break
+
+    async def async_turn_off(self):
+        """Turn the zone off."""
+        if HVACMode.OFF in self.hvac_modes:
+            await self.async_set_hvac_mode(HVACMode.OFF)
 
 
 class KoolnovaConnectivitySensor(SensorEntity):
