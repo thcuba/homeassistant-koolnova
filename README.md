@@ -85,3 +85,9 @@ manufacturer may change or shut down at any time. The REST client bundled in `ko
 fork of the `koolnova-api` package, with credit to its original author.
 
 MIT licensed · [Issues](https://github.com/luisgsluis/homeassistant-koolnova/issues)
+
+## Looking for Contributors
+
+Koolnova for Home Assistant is a side project I maintain solo, and I'm looking for people to bring
+into it as contributors — not a queue for feature requests. If you want to actually work on
+something, open an issue to introduce yourself and what you'd want to tackle.
