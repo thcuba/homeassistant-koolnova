@@ -55,3 +55,6 @@ If you changed it, say what you tested on the PR.
 - Bugs → use the bug report template.
 - Feature ideas → the feature request template.
 - Questions → GitHub Discussions.
+- Security problems → report privately via **Security → Report a
+  vulnerability** (see [SECURITY.md](SECURITY.md)). Please don't open a public
+  issue.
