@@ -57,6 +57,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # Add the single connectivity sensor
     entities.append(KoolnovaConnectivitySensor(coordinator, entry))
 
+    # Legacy hub controllers (only present on accounts that have a hub)
+    if coordinator.data.get("hubs"):
+        for hub in coordinator.data["hubs"]:
+            entities.append(KoolnovaHubEntity(coordinator, entry, hub))
+
     for sensor in coordinator.data.get("sensors", []):
         entities.append(KoolnovaZoneEntity(coordinator, entry, sensor))
 
@@ -684,3 +689,94 @@ class KoolnovaConnectivitySensor(SensorEntity):
             return datetime.fromisoformat(value)
         except (ValueError, TypeError):
             return value
+
+
+class KoolnovaHubEntity(ClimateEntity):
+    """Hub entity for legacy hub-based controllers.
+
+    Exposes ON/OFF (as HVACMode AUTO/OFF) and the behavior mode
+    (manual / auto / planning). Hub accounts are the older Koolnova
+    controllers; newer zone-based systems have no hub.
+    """
+
+    _attr_translation_key = "koolnova_hub"
+    _attr_should_poll = False
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
+
+    def __init__(self, coordinator, config_entry, hub):
+        """Initialize the hub entity."""
+        self.coordinator = coordinator
+        self.config_entry = config_entry
+        self._hub = hub
+        self._hub_id = hub["Hub_id"]
+
+        self._attr_name = f"Koolnova Hub {self._hub_id}"
+        self._attr_unique_id = f"{config_entry.entry_id}_hub_{self._hub_id}"
+        self._attr_supported_features = (
+            ClimateEntityFeature.PRESET_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
+        )
+
+    async def async_added_to_hass(self):
+        """Connect to coordinator."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    def _update_hub_data(self):
+        """Update local hub data from coordinator."""
+        for hub in self.coordinator.data.get("hubs", []):
+            if hub.get("Hub_id") == self._hub_id:
+                self._hub = hub
+                break
+
+    @property
+    def hvac_mode(self):
+        """Return current HVAC mode (AUTO = on, OFF = off)."""
+        self._update_hub_data()
+        return HVACMode.AUTO if self._hub.get("State") else HVACMode.OFF
+
+    @property
+    def preset_modes(self):
+        """Return available hub behavior modes."""
+        return ["manual", "auto", "planning"]
+
+    @property
+    def preset_mode(self):
+        """Return current hub behavior mode."""
+        self._update_hub_data()
+        return self._hub.get("Mode")
+
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Turn the hub on (AUTO) or off."""
+        state = (hvac_mode == HVACMode.AUTO)
+        try:
+            result = await self.coordinator.hass.async_add_executor_job(
+                self.coordinator.client.set_hub_state, self._hub_id, state
+            )
+            self._hub.update({"State": result.get("state"), "Mode": result.get("mode")})
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error("Error setting hub state: %s", err)
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set the hub behavior mode (manual / auto / planning)."""
+        try:
+            result = await self.coordinator.hass.async_add_executor_job(
+                self.coordinator.client.set_hub_mode, self._hub_id, preset_mode
+            )
+            self._hub.update({"State": result.get("state"), "Mode": result.get("mode")})
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error("Error setting hub mode: %s", err)
+
+    async def async_turn_on(self):
+        """Turn the hub on."""
+        await self.async_set_hvac_mode(HVACMode.AUTO)
+
+    async def async_turn_off(self):
+        """Turn the hub off."""
+        await self.async_set_hvac_mode(HVACMode.OFF)

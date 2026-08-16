@@ -69,6 +69,19 @@
             "name": "Last Update by Room"
           }
         }
+      },
+      "koolnova_hub": {
+        "name": "Koolnova Hub",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Mode",
+            "state": {
+              "manual": "Manual",
+              "auto": "Auto",
+              "planning": "Planning"
+            }
+          }
+        }
       }
     },
     "sensor": {
@@ -88,6 +101,11 @@
             "name": "Last Update by Room"
           }
         }
+      }
+    },
+    "binary_sensor": {
+      "connectivity_status": {
+        "name": "Connectivity Status"
       }
     }
   }

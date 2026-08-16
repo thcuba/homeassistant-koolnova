@@ -69,6 +69,19 @@
             "name": "Última actualización por habitación"
           }
         }
+      },
+      "koolnova_hub": {
+        "name": "Koolnova Hub",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Modo",
+            "state": {
+              "manual": "Manual",
+              "auto": "Automático",
+              "planning": "Programación"
+            }
+          }
+        }
       }
     },
     "sensor": {
@@ -88,6 +101,11 @@
             "name": "Última actualización por habitación"
           }
         }
+      }
+    },
+    "binary_sensor": {
+      "connectivity_status": {
+        "name": "Estado de Conectividad"
       }
     }
   }

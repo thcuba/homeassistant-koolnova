@@ -233,5 +233,95 @@ class AuthCooldownTest(unittest.TestCase):
         self.assertTrue(self.client._is_session_valid())
 
 
+class HubMethodsTest(ClientTestCase):
+    """Reverse-engineered hub/legacy endpoints (see docs/API.md)."""
+
+    def test_search_all_ids_classifies_modules_by_type(self):
+        self._respond([
+            {"Serial": "KN1", "ModuleType_Id": 1},
+            {"Serial": "HB1", "ModuleType_Id": 2},
+            {"Serial": "HB2", "ModuleType_Id": 2},
+            {"Serial": "X"},                      # no ModuleType_Id -> ignored
+            {"ModuleType_Id": 1},                 # no Serial -> ignored
+        ])
+
+        ids = self.client.search_all_ids()
+
+        self.assertEqual(ids, {"koolnova": ["KN1"], "hub": ["HB1", "HB2"]})
+        args, _ = self.session.rest_request.call_args
+        self.assertEqual(args, ("GET", "modules/"))
+
+    def test_search_all_ids_tolerates_a_non_list_response(self):
+        self._respond({"data": []})
+
+        self.assertEqual(self.client.search_all_ids(), {"koolnova": [], "hub": []})
+
+    def test_search_koolnova_and_hub_ids_delegate(self):
+        self._respond([{"Serial": "KN1", "ModuleType_Id": 1}, {"Serial": "HB1", "ModuleType_Id": 2}])
+
+        self.assertEqual(self.client.search_koolnova_ids(), ["KN1"])
+        self.assertEqual(self.client.search_hub_ids(), ["HB1"])
+
+    def test_get_hub_state_parses_equipment_and_behavior(self):
+        self._respond({"stateEquipment": True, "behavior": "auto"})
+
+        state = self.client.get_hub_state("HB1")
+
+        self.assertEqual(state, {"state": True, "mode": "auto"})
+        args, _ = self.session.rest_request.call_args
+        self.assertEqual(args, ("GET", "hub/HB1/state"))
+
+    def test_set_hub_mode_uses_put_with_content_type(self):
+        self._respond({"stateEquipment": False, "behavior": "manual"})
+
+        state = self.client.set_hub_mode("HB1", "manual")
+
+        self.assertEqual(state, {"state": False, "mode": "manual"})
+        args, kwargs = self.session.rest_request.call_args
+        self.assertEqual(args, ("PUT", "hub/HB1/mode/manual"))
+        self.assertEqual(kwargs["headers"]["content-type"], "application/json")
+
+    def test_set_hub_mode_rejects_unknown_modes(self):
+        with self.assertRaises(ValueError):
+            self.client.set_hub_mode("HB1", "turbo")
+
+    def test_set_hub_state_posts_then_re_reads_state(self):
+        post = MagicMock()
+        state = MagicMock()
+        state.json.return_value = {"stateEquipment": True, "behavior": "planning"}
+        self.session.rest_request.side_effect = [post, state]
+
+        result = self.client.set_hub_state("HB1", True)
+
+        self.assertEqual(result, {"state": True, "mode": "planning"})
+        calls = self.session.rest_request.call_args_list
+        self.assertEqual(calls[0].args, ("POST", "hub/HB1/Manual/True"))
+        self.assertEqual(calls[1].args, ("GET", "hub/HB1/state"))
+
+    def test_get_devices_from_a_paginated_response(self):
+        self._respond({"data": [{"id": 1}]})
+
+        self.assertEqual(self.client.get_devices(), [{"id": 1}])
+        args, _ = self.session.rest_request.call_args
+        self.assertEqual(args, ("GET", "devices/"))
+
+    def test_get_devices_accepts_a_plain_list(self):
+        self._respond([{"id": 1}])
+
+        self.assertEqual(self.client.get_devices(), [{"id": 1}])
+
+    def test_get_devices_returns_empty_when_no_data(self):
+        self._respond({})
+
+        self.assertEqual(self.client.get_devices(), [])
+
+    def test_get_notifications(self):
+        self._respond({"data": [{"id": 5}]})
+
+        self.assertEqual(self.client.get_notifications(), [{"id": 5}])
+        args, _ = self.session.rest_request.call_args
+        self.assertEqual(args, ("GET", "notifications/"))
+
+
 if __name__ == "__main__":
     unittest.main()

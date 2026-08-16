@@ -206,3 +206,89 @@ class KoolnovaAPIRestClient:
 
         _LOGGER.debug("Project %s updated successfully with payload %s: %s", topic_id, payload, result)
         return result
+
+    # --- Hub / legacy controller endpoints (reverse-engineered, see docs/API.md) ---
+
+    def search_all_ids(self) -> Dict[str, List[str]]:
+        """Return all device ids grouped by type (koolnova / hub).
+
+        GETs `/modules/` and classifies entries by `ModuleType_Id` (1 => koolnova,
+        2 => hub) using the `Serial` field as identifier.
+        """
+        headers = COMMON_HEADERS.copy()
+        resp = self._get_session().rest_request("GET", "modules/", headers=headers)
+        json_resp = resp.json()
+        if not isinstance(json_resp, list):
+            _LOGGER.warning("Unexpected /modules/ response type: %s", type(json_resp))
+            return {"koolnova": [], "hub": []}
+        koolnova = []
+        hub = []
+        for item in json_resp:
+            serial = item.get("Serial")
+            if not serial:
+                continue
+            module_type = item.get("ModuleType_Id")
+            if module_type == 1:
+                koolnova.append(serial)
+            elif module_type == 2:
+                hub.append(serial)
+        return {"koolnova": koolnova, "hub": hub}
+
+    def search_koolnova_ids(self) -> List[str]:
+        """Return the list of koolnova module ids."""
+        return self.search_all_ids().get("koolnova", [])
+
+    def search_hub_ids(self) -> List[str]:
+        """Return the list of hub ids."""
+        return self.search_all_ids().get("hub", [])
+
+    def get_hub_state(self, hub_id: str) -> Dict[str, Any]:
+        """Return the current state (on/off) and behavior mode of a hub."""
+        headers = COMMON_HEADERS.copy()
+        resp = self._get_session().rest_request("GET", f"hub/{hub_id}/state", headers=headers)
+        json_resp = resp.json()
+        return {
+            "state": bool(json_resp.get("stateEquipment")),
+            "mode": json_resp.get("behavior"),
+        }
+
+    def set_hub_mode(self, hub_id: str, target_mode: str) -> Dict[str, Any]:
+        """Set the behavior mode of a hub: manual, auto or planning."""
+        if target_mode not in ("manual", "auto", "planning"):
+            raise ValueError(f"Invalid hub mode: {target_mode}")
+        headers = PATCH_HEADERS.copy()
+        resp = self._get_session().rest_request("PUT", f"hub/{hub_id}/mode/{target_mode}", headers=headers)
+        json_resp = resp.json()
+        return {
+            "state": bool(json_resp.get("stateEquipment")),
+            "mode": json_resp.get("behavior"),
+        }
+
+    def set_hub_state(self, hub_id: str, state: bool) -> Dict[str, Any]:
+        """Turn a hub on or off."""
+        path = f"hub/{hub_id}/Manual/{str(state)}"
+        headers = PATCH_HEADERS.copy()
+        self._get_session().rest_request("POST", path, headers=headers)
+        return self.get_hub_state(hub_id)
+
+    def get_devices(self) -> List[Dict[str, Any]]:
+        """Return the list of devices (fallback data source when topics fail)."""
+        headers = COMMON_HEADERS.copy()
+        response = self._get_session().rest_request("GET", "devices/", headers=headers)
+        json_resp = response.json()
+        if isinstance(json_resp, list):
+            return json_resp
+        if not json_resp or "data" not in json_resp:
+            return []
+        return json_resp["data"]
+
+    def get_notifications(self) -> List[Dict[str, Any]]:
+        """Return the list of notifications."""
+        headers = COMMON_HEADERS.copy()
+        response = self._get_session().rest_request("GET", "notifications/", headers=headers)
+        json_resp = response.json()
+        if isinstance(json_resp, list):
+            return json_resp
+        if not json_resp or "data" not in json_resp:
+            return []
+        return json_resp["data"]

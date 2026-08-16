@@ -4,19 +4,43 @@
 [![release](https://img.shields.io/github/v/release/luisgsluis/homeassistant-koolnova)](https://github.com/luisgsluis/homeassistant-koolnova/releases)
 
 Custom integration that controls **Koolnova** HVAC systems from Home Assistant through their cloud
-API. Every zone, plus the project as a whole, is exposed as a `climate` entity.
-
-- ❄️ HVAC modes per zone and globally (COOL / HEAT / AUTO / OFF)
-- 🌡️ Target temperature per zone
-- 🌬️ Fan speed per zone
-- 🏠 Global project control (mode, ECO, stop)
-- 🔄 Staggered polling: sensors every cycle, projects cached
-- 🎛️ Setup and intervals configurable from the UI
+API. Zones, the project as a whole, and (on legacy accounts) the physical hub are exposed as
+`climate` entities, plus a connectivity binary sensor per project.
 
 Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 > ⚠️ Koolnova bans your IP automatically if their API receives more than one request every
-> 30 seconds. That is why the minimum interval is 30 s — do not force it lower.
+> 30 seconds, and also on repeated failed logins. The integration enforces that minimum interval
+> and backs off after a failed login on purpose — do not force it lower.
+
+## Features
+
+- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / AUTO / OFF)
+- 🌡️ **Target temperature** per zone and global median across zones
+- 🌬️ **Fan speed** per zone (LOW / MEDIUM / HIGH / AUTO)
+- 🏠 **Global project control** (mode, ECO, stop) on a single `climate` entity
+- 🧊 **Hub control** on legacy accounts: one `climate` entity per hub with ON/OFF and the behavior
+  mode (manual / auto / planning)
+- 📶 **Connectivity binary sensor** per project (online/offline)
+- 🛡️ **Robust against the brittle API**: retries with exponential backoff on timeouts, network
+  errors, rate limiting (429) and server errors (5xx); auto-refreshes the session token on 401;
+  a 60 s per-request timeout; falls back to the `/devices/` endpoint when the main ones fail
+- 🔄 **Staggered polling**: sensors every cycle, the more expensive project list cached
+- 🎛️ **Setup and intervals configurable from the UI**
+- 🌍 Translations: English, Spanish, Italian
+
+## Entities
+
+| Entity | Domain | Purpose |
+|---|---|---|
+| `climate.koolnova_*` (project) | climate | Global control: target temperature (median of zones), project HVAC mode, ECO/stop attributes |
+| `climate.koolnova_*` (zone) | climate | One per room: temperature, setpoint, HVAC mode, fan speed |
+| `climate.koolnova_hub_*` | climate | Legacy hub, one per hub: ON/OFF + manual / auto / planning |
+| `sensor.koolnova_connectivity_status` | sensor | Online/offline + WiFi signal, last sync, per-room last update |
+| `binary_sensor.koolnova_connectivity_status` | binary_sensor | Online/offline per project, ready for automations |
+
+The integration also fires a `koolnova_update_completed` event after every poll with counts and a
+`lastsync` timestamp — handy for automation triggers. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Installation
 

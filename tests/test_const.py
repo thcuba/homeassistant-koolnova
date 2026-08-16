@@ -137,5 +137,11 @@ class LimitsTest(unittest.TestCase):
         self.assertIn(const.DEFAULT_TEMP_PRECISION, const.AVAILABLE_TEMP_PRECISIONS)
 
 
+class PlatformsTest(unittest.TestCase):
+    def test_domain_and_platforms(self):
+        self.assertEqual(const.DOMAIN, "koolnova")
+        self.assertEqual(const.PLATFORMS, ["climate", "binary_sensor"])
+
+
 if __name__ == "__main__":
     unittest.main()

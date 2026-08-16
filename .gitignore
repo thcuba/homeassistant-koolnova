@@ -10,3 +10,6 @@ __pycache__/
 
 # Local working notes, never published
 *.local.md
+
+# Project-local agent instructions: kept out of the public repo on purpose.
+CLAUDE.md

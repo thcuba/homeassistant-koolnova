@@ -8,6 +8,10 @@ v1.3.1 had to revert it. These tests pin that behaviour down.
 import unittest
 from unittest.mock import patch
 
+from requests.exceptions import ConnectionError
+from requests.exceptions import HTTPError
+from requests.exceptions import Timeout
+
 from koolnova_api.session import KoolnovaClientSession
 
 
@@ -27,6 +31,25 @@ def _ok_response(payload=None, status=200):
                 raise RuntimeError(f"HTTP {self.status_code}")
 
     return _Response()
+
+
+def _status_response(status, payload=None, headers=None):
+    """Response with an explicit status code and headers (for retry tests)."""
+
+    class _Response:
+        status_code = status
+        text = "{}"
+
+        def json(self):
+            return payload if payload is not None else {"access_token": "tok"}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise HTTPError(f"HTTP {self.status_code}", response=self)
+
+    response = _Response()
+    response.headers = headers or {}
+    return response
 
 
 class LoginPayloadTest(unittest.TestCase):
@@ -107,6 +130,155 @@ class TokenHandlingTest(unittest.TestCase):
             session.rest_request("GET", "topics/sensors/")
 
         self.assertEqual(request.call_args.args[1], "https://api.koolnova.com/topics/sensors/")
+
+
+class RetryBehaviourTest(unittest.TestCase):
+    """rest_request retries transient failures instead of surfacing them."""
+
+    def setUp(self):
+        with patch("requests.Session.request", return_value=_ok_response()):
+            self.session = KoolnovaClientSession("user@example.com", "secret")
+        # Avoid real sleeps between retries.
+        sleep = patch("koolnova_api.session.time.sleep")
+        sleep.start()
+        self.addCleanup(sleep.stop)
+
+    def test_succeeds_without_retry_on_a_normal_response(self):
+        with patch("requests.Session.request", return_value=_ok_response()) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retries_after_a_connection_error(self):
+        with patch("requests.Session.request", side_effect=[ConnectionError("boom"), _ok_response()]) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retries_after_a_timeout(self):
+        with patch("requests.Session.request", side_effect=[Timeout("slow"), _ok_response()]) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retries_on_rate_limit(self):
+        with patch(
+            "requests.Session.request",
+            side_effect=[_status_response(429, headers={"Retry-After": "0"}), _ok_response()],
+        ) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retries_on_rate_limit_without_retry_after(self):
+        with patch(
+            "requests.Session.request",
+            side_effect=[_status_response(429), _ok_response()],
+        ):
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_retries_on_server_error(self):
+        with patch("requests.Session.request", side_effect=[_status_response(500), _ok_response()]) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(response.status_code, 200)
+
+    def test_connection_error_is_reraised_once_retries_run_out(self):
+        # 4 attempts with default max_retries=3, all failing.
+        with patch("requests.Session.request", side_effect=[ConnectionError("boom")] * 4) as request:
+            with self.assertRaises(ConnectionError):
+                self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 4)
+
+    def test_max_retries_zero_does_not_retry(self):
+        with patch("requests.Session.request", side_effect=[ConnectionError("boom")]) as request:
+            with self.assertRaises(ConnectionError):
+                self.session.rest_request("GET", "projects/", max_retries=0)
+
+        self.assertEqual(request.call_count, 1)
+
+    def test_400_is_not_retried(self):
+        with patch("requests.Session.request", side_effect=[_status_response(400)]) as request:
+            with self.assertRaises(HTTPError):
+                self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 1)
+
+
+class TokenRefreshTest(unittest.TestCase):
+    """A 401 mid-session refreshes the token and retries the call."""
+
+    def setUp(self):
+        with patch("requests.Session.request", return_value=_ok_response()):
+            self.session = KoolnovaClientSession("user@example.com", "secret")
+        sleep = patch("koolnova_api.session.time.sleep")
+        sleep.start()
+        self.addCleanup(sleep.stop)
+
+    def test_401_refreshes_the_token_and_retries(self):
+        # GET -> 401, login (refresh) -> 200 token, GET retry -> 200
+        with patch(
+            "requests.Session.request",
+            side_effect=[_status_response(401), _ok_response(), _ok_response()],
+        ) as request:
+            response = self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(response.status_code, 200)
+
+        # The refreshed token is the one used on the retried call.
+        _, kwargs = request.call_args_list[2]
+        self.assertEqual(kwargs["headers"]["Authorization"], "Bearer tok")
+
+    def test_refresh_token_replaces_the_bearer_token(self):
+        with patch("requests.Session.request", return_value=_ok_response({"access_token": "newtok"})):
+            self.session.refresh_token()
+
+        self.assertEqual(self.session.bearerToken, "newtok")
+
+    def test_401_without_retries_raises_instead_of_refreshing(self):
+        with patch("requests.Session.request", side_effect=[_status_response(401)]):
+            with self.assertRaises(HTTPError):
+                self.session.rest_request("GET", "projects/", max_retries=0)
+
+    def test_a_failed_refresh_invalidates_the_token_for_the_next_poll(self):
+        # GET -> 401, refresh login -> 400.
+        with patch(
+            "requests.Session.request",
+            side_effect=[_status_response(401), _status_response(400)],
+        ):
+            with self.assertRaises(RuntimeError):
+                self.session.rest_request("GET", "projects/")
+
+        # token_created reset so the client recreates the session (with its
+        # anti-ban cooldown) instead of reusing a dead token.
+        self.assertEqual(self.session.token_created, 0.0)
+
+
+class RequestTimeoutTest(unittest.TestCase):
+    def setUp(self):
+        with patch("requests.Session.request", return_value=_ok_response()):
+            self.session = KoolnovaClientSession("user@example.com", "secret")
+
+    def test_defaults_to_a_60s_timeout(self):
+        with patch("requests.Session.request", return_value=_ok_response()) as request:
+            self.session.rest_request("GET", "projects/")
+
+        self.assertEqual(request.call_args.kwargs["timeout"], 60)
+
+    def test_an_explicit_timeout_is_preserved(self):
+        with patch("requests.Session.request", return_value=_ok_response()) as request:
+            self.session.rest_request("GET", "projects/", timeout=10)
+
+        self.assertEqual(request.call_args.kwargs["timeout"], 10)
 
 
 if __name__ == "__main__":

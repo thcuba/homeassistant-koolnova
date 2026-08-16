@@ -105,6 +105,50 @@ Updates the whole project.
 | `{"is_stop": true}` | Global stop |
 | `{"is_online": true}` | Online state |
 
+## Hub / legacy controller endpoints
+
+Legacy Koolnova controllers (a physical hub instead of per-zone devices) expose a few extra
+endpoints. These were contributed from a community fork and are covered by mocked unit tests only —
+**not verified against the live API**; if your account has no hub, `/modules/` answers nothing
+usable and the integration simply creates no hub entities.
+
+### `GET /modules/`
+
+Lists the modules on the account, one dict per module. The client classifies them by
+`ModuleType_Id` (`1` => koolnova zone device, `2` => hub) and uses `Serial` as the id:
+
+```json
+[{"Serial": "KN1234", "ModuleType_Id": 2, "…": "…"}]
+```
+
+### `GET /hub/{hub_id}/state`
+
+Current state of one hub:
+
+| Field | Meaning |
+|---|---|
+| `stateEquipment` | Hub is on (`true`/`false`) |
+| `behavior` | Behavior mode: `manual`, `auto`, `planning` |
+
+### `PUT /hub/{hub_id}/mode/{target}`
+
+Sets the hub behavior mode. `target` is one of `manual`, `auto`, `planning`. The response mirrors
+`/hub/{id}/state`.
+
+### `POST /hub/{hub_id}/Manual/{bool}`
+
+Turns the hub on/off (`True`/`False`). The client then re-reads `/hub/{id}/state` to return the
+new state.
+
+### `GET /devices/`
+
+Fallback data source: flat list of devices with a nested `sensor` dict. Used by the coordinator
+only when the `topics` endpoints fail, so the integration degrades instead of going `unavailable`.
+
+### `GET /notifications/`
+
+Lists notifications. Currently not consumed by the integration; exposed for tooling.
+
 ## Code tables
 
 Defined in `custom_components/koolnova/const.py`. **Project modes and zone modes use different

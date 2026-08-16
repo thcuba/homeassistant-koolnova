@@ -36,14 +36,20 @@ from koolnovaapi.client import KoolnovaAPIRestClient     # ❌ breaks the integr
 Never reintroduce an absolute `koolnova_api` import, and never add the PyPI package to
 `manifest.json`. After touching imports, clear the Python cache (`__pycache__`) before testing.
 
-### Two entity scopes
+### Entity scopes
 
-`climate.py` exposes two classes that translate through the mappings in `const.py`
+`climate.py` exposes classes that translate through the mappings in `const.py`
 (`KOOLNOVA_TO_HVAC_MODE`, `KOOLNOVA_ZONE_STATUS_TO_HVAC`, `KOOLNOVA_TO_FAN` and their
 auto-generated inverses):
 
 - `KoolnovaProjectEntity` — the whole project: global HVAC mode, ECO, stop.
 - `KoolnovaZoneEntity` — one per sensor/room: setpoint, status, fan speed.
+- `KoolnovaHubEntity` — one per **legacy hub** (only created when the account has a hub): ON/OFF as
+  HVACMode AUTO/OFF plus the behavior mode (manual / auto / planning). Backed by the
+  reverse-engineered endpoints in `docs/API.md#hub--legacy-controller-endpoints`.
+
+`binary_sensor.py` adds one `KoolnovaConnectivitySensor` per project (online/offline), on top of the
+connectivity `SensorEntity` in `climate.py` that also reports RSSI and per-room last-update.
 
 ### Two polling rates
 
@@ -72,7 +78,12 @@ python3 -m unittest discover -s tests -t . -v
 
 Every HTTP call is mocked. The suite pins down the things that have actually broken in production:
 the `email` login field, the browser headers, `PUT` vs `PATCH` per endpoint, the auth-failure
-cooldown, and the code tables. CI runs it on every push (`.github/workflows/validate.yml`).
+cooldown, the code tables, the retry/backoff and 401-refresh behaviour of `rest_request`, and the
+hub endpoints. CI runs it on every push (`.github/workflows/validate.yml`).
+
+`tests/test_integration.py` goes a step further: it points the real client + session at a local
+`http.server` (no mocks on `requests.Session`) and exercises login, the 401 refresh and the retry
+paths over a real socket. It still never touches api.koolnova.com, so no credentials are involved.
 
 **Never put real credentials in a test.** An earlier `tests/` directory held API exploration
 scripts with a plaintext password and had to be purged from git history in v1.2.6.

@@ -7,6 +7,8 @@ from typing import Optional
 
 from requests import Response
 from requests import Session
+from requests.exceptions import ConnectionError
+from requests.exceptions import Timeout
 
 from .const import COMMON_HEADERS
 from .const import FULL_USER_AGENT
@@ -14,6 +16,14 @@ from .const import KOOLNOVA_API_URL
 from .const import KOOLNOVA_AUTH_URL
 
 _LOGGER = logging.getLogger(__name__)
+
+# Retry policy for authenticated API calls (rest_request).
+DEFAULT_MAX_RETRIES = 3      # retries after the initial attempt
+DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds, doubles each attempt
+DEFAULT_RETRY_MAX_DELAY = 30.0
+
+# Per-request timeout. Without one, a hung request blocks a polling cycle forever.
+REQUEST_TIMEOUT = 60
 
 class KoolnovaClientSession(Session):
     """HTTP session manager for Koolnova api.
@@ -24,23 +34,49 @@ class KoolnovaClientSession(Session):
 
     host: str = KOOLNOVA_API_URL
 
-    def __init__(self, username: str, password: str, email: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        email: Optional[str] = None,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_backoff: float = DEFAULT_RETRY_BACKOFF,
+    ) -> None:
         """Initialize and authenticate.
 
         Args:
             username: the flipr registered user
             password: the flipr user's password
+            email: optional email for the account; this is the field the API
+                authenticates on (see _authenticate)
+            max_retries: retry count for rest_request
+            retry_backoff: base delay (seconds) for the exponential backoff
         """
         Session.__init__(self)
-        _LOGGER.debug("Starting authentication for username '%s' (email: %s)", username, email)
+        self.username = username
+        self.password = password
+        self.email = email
+        self.max_retries = max_retries
+        self.retry_backoff = retry_backoff
+        self.bearerToken: Optional[str] = None
+        self.token_created: float = 0.0
+        self._authenticate()
+
+    def _authenticate(self) -> None:
+        """POST /auth/v2/login/ and store the bearer token.
+
+        Raises:
+            RuntimeError: if the login fails after all attempts.
+        """
+        _LOGGER.debug("Starting authentication for username '%s' (email: %s)", self.username, self.email)
 
         # Build payload. The API authenticates under the 'email' field
         # (verified against api.koolnova.com/auth/v2/login/: 'email' -> 200,
         # 'username' -> 400 "Unable to log in with provided credentials").
         # The 404 in issue #4 was caused by the missing browser headers below,
         # not by the field name; sending 'username' regressed login (see v1.3.0).
-        login = email or username or ""
-        payload = {"email": login, "password": password}
+        login = self.email or self.username or ""
+        payload = {"email": login, "password": self.password}
 
         _LOGGER.debug("Auth payload user: %s", login)
 
@@ -57,7 +93,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(max_attempts):
             try:
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=30)
+                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=60)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, max_attempts, e)
                 response = None
@@ -128,20 +164,48 @@ class KoolnovaClientSession(Session):
         self.token_created = time.time()  # Track when token was created
         _LOGGER.debug("Authentication successful, token obtained")
 
-    def rest_request(self, method: str, path: str, **kwargs) -> Response:
+    def refresh_token(self) -> None:
+        """Re-authenticate and replace the bearer token.
+
+        Used when the API answers 401 (expired/invalid token) mid-session.
+        Only renews the token; the requests.Session itself is left untouched.
         """
-        Make a request using token authentication.
+        self._authenticate()
+
+    def rest_request(
+        self,
+        method: str,
+        path: str,
+        max_retries: Optional[int] = None,
+        retry_backoff: Optional[float] = None,
+        **kwargs,
+    ) -> Response:
+        """
+        Make a request using token authentication, retrying transient failures.
+
+        Retries network errors (ConnectionError/Timeout), rate limiting (429)
+        and server errors (5xx) with exponential backoff. A 401 refreshes the
+        token once and retries. Everything else is propagated via
+        raise_for_status().
 
         Args:
             method: HTTP method (e.g., "GET", "POST", "PATCH").
             path: Path of the REST API endpoint.
+            max_retries: override the retry count (default: self.max_retries).
+            retry_backoff: override the base backoff delay.
             **kwargs: Additional arguments for the request (e.g., headers, json, data).
 
         Returns:
             The Response object corresponding to the result of the API request.
         """
+        retries = self.max_retries if max_retries is None else max_retries
+        backoff = self.retry_backoff if retry_backoff is None else retry_backoff
+
+        # Without an explicit timeout a hung request blocks the polling cycle.
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+
         headers_auth = {
-            "Authorization": "Bearer " + self.bearerToken,
+            "Authorization": "Bearer " + (self.bearerToken or ""),
             "Cache-Control": "no-cache",
             "User-Agent": FULL_USER_AGENT,
         }
@@ -149,6 +213,64 @@ class KoolnovaClientSession(Session):
         headers = kwargs.pop("headers", {})
         headers_auth.update(headers)
 
-        response = super().request(method, f"{self.host}/{path}", headers=headers_auth, **kwargs)
-        response.raise_for_status()
-        return response
+        url = f"{self.host}/{path}"
+
+        for attempt in range(retries + 1):
+            try:
+                response = super().request(method, url, headers=headers_auth, **kwargs)
+            except (ConnectionError, Timeout) as exc:
+                if attempt < retries:
+                    delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_DELAY)
+                    _LOGGER.warning(
+                        "Network error on %s %s (attempt %d/%d): %s; retrying in %.1fs",
+                        method, url, attempt + 1, retries + 1, exc, delay,
+                    )
+                    time.sleep(delay)
+                    continue
+                _LOGGER.error("Network error on %s %s persisted after %d attempts", method, url, retries + 1)
+                raise
+
+            # 401: token expired/invalid -> refresh once and retry
+            if response.status_code == 401 and attempt < retries:
+                _LOGGER.warning(
+                    "Received 401 on %s %s (attempt %d/%d); refreshing token",
+                    method, url, attempt + 1, retries + 1,
+                )
+                try:
+                    self.refresh_token()
+                except Exception:
+                    # Invalidate the token so the client recreates the session
+                    # (applying its anti-ban cooldown) on the next poll.
+                    self.token_created = 0.0
+                    raise
+                headers_auth["Authorization"] = "Bearer " + (self.bearerToken or "")
+                continue
+
+            # 429: rate limited -> honour Retry-After when present
+            if response.status_code == 429 and attempt < retries:
+                try:
+                    retry_after = response.headers.get("Retry-After")
+                    delay = min(float(retry_after), DEFAULT_RETRY_MAX_DELAY) if retry_after else min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_DELAY)
+                except ValueError:
+                    delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_DELAY)
+                _LOGGER.warning(
+                    "Rate limited (429) on %s %s, retrying in %.1fs (attempt %d/%d)",
+                    method, url, delay, attempt + 1, retries + 1,
+                )
+                time.sleep(delay)
+                continue
+
+            # 5xx: server error -> retry with backoff
+            if response.status_code >= 500 and attempt < retries:
+                delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_DELAY)
+                _LOGGER.warning(
+                    "Server error %d on %s %s, retrying in %.1fs (attempt %d/%d)",
+                    response.status_code, method, url, delay, attempt + 1, retries + 1,
+                )
+                time.sleep(delay)
+                continue
+
+            response.raise_for_status()
+            return response
+
+        raise RuntimeError(f"All retry attempts exhausted for {method} {url}")

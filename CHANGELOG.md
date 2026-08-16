@@ -5,6 +5,30 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [Unreleased]
+
+### Added
+
+- **Hub control on legacy accounts.** A `KoolnovaHubEntity` climate entity is created per physical
+  hub with ON/OFF (AUTO/OFF) and the behavior mode (manual / auto / planning). Only present when the
+  account actually has a hub (the `/modules/` endpoint answers nothing on newer zone-based systems).
+  The reverse-engineered hub endpoints (`/modules/`, `/hub/{id}/state`, `/hub/{id}/mode/…`,
+  `/hub/{id}/Manual/…`) are documented in [docs/API.md](docs/API.md).
+- **Connectivity binary sensor per project** (`binary_sensor.koolnova_connectivity_status`), a
+  proper on/off entity ready for automations alongside the existing connectivity sensor.
+- **Italian translation** (`translations/it.json`).
+- **`/devices/` fallback**: when the main `topics` endpoints fail, the coordinator retries through
+  `/devices/` so the integration degrades instead of going unavailable.
+
+### Changed
+
+- **Resilient API client.** `rest_request` now retries with exponential backoff on network errors,
+  timeouts, rate limiting (429, honouring `Retry-After`) and server errors (5xx); a 401 refreshes
+  the session token once and retries; every request gets a 60 s timeout instead of hanging forever.
+  The anti-ban protections from earlier releases (minimum 30 s poll interval, cooldown after a
+  failed login) are unchanged.
+- **Internal:** the `koolnova_update_completed` event now also carries `hubs_count`.
+
 ## [1.4.0] — 2026-08-01
 
 ### Changed — breaking

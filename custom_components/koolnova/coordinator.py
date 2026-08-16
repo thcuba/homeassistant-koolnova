@@ -57,7 +57,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             password=config_data["password"]
         )
         self.config_entry = config_entry
-        self.data = {"projects": [], "sensors": []}
+        self.data = {"projects": [], "sensors": [], "hubs": []}
 
         # Counter driving the periodic project refresh
         self._project_update_counter = 0
@@ -66,15 +66,105 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             config_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY)
         )
 
+    def _fetch_hubs(self) -> list:
+        """Discover hubs and read their state.
+
+        Never raises: hubs are optional and only exist on legacy accounts.
+        Returns a list of hub dicts, or [] when the account has no hub
+        (/modules/ answers nothing usable, which is the norm for newer
+        zone-based systems).
+        """
+        hubs = []
+        try:
+            module_ids = self.client.search_all_ids()
+        except Exception as err:
+            _LOGGER.debug("Hub discovery unavailable (%s); continuing without hubs", err)
+            return hubs
+        for hub_id in module_ids.get("hub", []):
+            try:
+                hub_state = self.client.get_hub_state(hub_id)
+                hubs.append({
+                    "Hub_id": hub_id,
+                    "State": hub_state.get("state"),
+                    "Mode": hub_state.get("mode"),
+                })
+            except Exception as err:
+                _LOGGER.warning("Could not fetch state for hub %s: %s", hub_id, err)
+        return hubs
+
+    def _fetch_data_fallback(self) -> dict:
+        """Fetch data via the /devices/ endpoint when the topics endpoints fail.
+
+        Returns None when the fallback yields nothing usable.
+        """
+        try:
+            _LOGGER.debug("Attempting fallback data fetch via /devices/")
+            devices = self.client.get_devices()
+            if not devices:
+                _LOGGER.warning("Fallback: no devices found in /devices/")
+                return None
+
+            sensors = []
+            projects_dict = {}
+            for device in devices:
+                sensor_data = device.get("sensor")
+                if not sensor_data:
+                    continue
+
+                topic_info = sensor_data.get("topic_info", {})
+                topic_id = topic_info.get("id", "Unknown")
+
+                sensors.append({
+                    "Room_Name": sensor_data.get("name"),
+                    "Room_id": sensor_data.get("id"),
+                    "Room_status": sensor_data.get("status"),
+                    "Room_update_at": sensor_data.get("updated_at"),
+                    "Room_actual_temp": sensor_data.get("temperature"),
+                    "Room_setpoint_temp": sensor_data.get("setpoint_temperature"),
+                    "Room_speed": sensor_data.get("speed"),
+                    "Topic_id": topic_id,
+                    "topic_info": topic_info,
+                })
+
+                if topic_id not in projects_dict:
+                    projects_dict[topic_id] = {
+                        "Project_Name": device.get("project_name", "Home"),
+                        "Topic_Name": topic_info.get("name", "Main"),
+                        "Topic_id": topic_id,
+                        "Mode": topic_info.get("mode"),
+                        "is_stop": topic_info.get("is_stop"),
+                        "is_online": topic_info.get("is_online"),
+                        "eco": topic_info.get("eco"),
+                        "last_sync": topic_info.get("last_sync"),
+                    }
+
+            return {
+                "projects": list(projects_dict.values()),
+                "sensors": sensors,
+                "hubs": self._fetch_hubs(),
+            }
+        except Exception as err:
+            _LOGGER.error("Fallback data fetch failed: %s", err)
+            return None
+
     def _fetch_data(self) -> dict:
         """Fetch all data from Koolnova API. Called during initial setup."""
         try:
             _LOGGER.debug("Fetching all data from Koolnova API (initial setup)")
-            projects = self.client.get_project()
-            sensors = self.client.get_sensors()
-            _LOGGER.debug("Successfully fetched %d projects and %d sensors",
-                         len(projects), len(sensors))
-            return {"projects": projects, "sensors": sensors}
+            try:
+                projects = self.client.get_project()
+                sensors = self.client.get_sensors()
+                hubs = self._fetch_hubs()
+                _LOGGER.debug("Successfully fetched %d projects, %d sensors and %d hubs",
+                             len(projects), len(sensors), len(hubs))
+                return {"projects": projects, "sensors": sensors, "hubs": hubs}
+            except Exception as err:
+                _LOGGER.warning("Primary fetch failed, trying /devices/ fallback: %s", err)
+                fallback_data = self._fetch_data_fallback()
+                if fallback_data:
+                    _LOGGER.info("Fallback fetch via /devices/ successful")
+                    return fallback_data
+                raise
         except KoolnovaError as err:
             _LOGGER.error("Koolnova API error: %s", err)
             raise UpdateFailed(f"Error communicating with Koolnova API: {err}")
@@ -86,10 +176,25 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         """Fetch only sensors data from Koolnova API. Called during periodic updates."""
         try:
             _LOGGER.debug("Fetching sensors data from Koolnova API (periodic update)")
-            sensors = self.client.get_sensors()
+            try:
+                sensors = self.client.get_sensors()
+            except Exception as err:
+                _LOGGER.warning("Sensors fetch failed, trying /devices/ fallback: %s", err)
+                fallback_data = self._fetch_data_fallback()
+                if not fallback_data:
+                    raise
+                sensors = fallback_data.get("sensors", [])
+                if fallback_data.get("projects"):
+                    self.data["projects"] = fallback_data["projects"]
+                if fallback_data.get("hubs"):
+                    self.data["hubs"] = fallback_data["hubs"]
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
-            # Keep existing projects data, only update sensors
-            return {"projects": self.data.get("projects", []), "sensors": sensors}
+            # Keep existing projects and hubs data, only update sensors
+            return {
+                "projects": self.data.get("projects", []),
+                "sensors": sensors,
+                "hubs": self.data.get("hubs", []),
+            }
         except KoolnovaError as err:
             _LOGGER.error("Koolnova API error fetching sensors: %s", err)
             raise UpdateFailed(f"Error communicating with Koolnova API: {err}")
@@ -123,6 +228,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
           when there is no project data to read it from.
         - projects_count: number of projects (for full/initial updates)
         - sensors_count: number of sensors (for full/sensors_only updates)
+        - hubs_count: number of hubs (for full/sensors_only/initial updates)
         - error: error message (for failed/cached updates)
 
         Returns:
@@ -148,9 +254,10 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         "entry_id": self.config_entry.entry_id,
                         "lastsync": result.get("projects", [{}])[0].get("last_sync") if result.get("projects") else None,
                         "projects_count": len(result.get("projects", [])),
-                        "sensors_count": len(result.get("sensors", []))
+                        "sensors_count": len(result.get("sensors", [])),
+                        "hubs_count": len(result.get("hubs", []))
                     })
-                    
+
                     return result
                 else:
                     # NORMAL UPDATE: Only fetch sensors for efficiency
@@ -165,9 +272,10 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         "timestamp": datetime.now().isoformat(),
                         "entry_id": self.config_entry.entry_id,
                         "lastsync": self.data.get("projects", [{}])[0].get("last_sync") if self.data.get("projects") else None,
-                        "sensors_count": len(result.get("sensors", []))
+                        "sensors_count": len(result.get("sensors", [])),
+                        "hubs_count": len(result.get("hubs", []))
                     })
-                    
+
                     return result
             else:
                 # INITIAL SETUP: Fetch complete dataset and reset counter
@@ -183,9 +291,10 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                     "entry_id": self.config_entry.entry_id,
                     "lastsync": result.get("projects", [{}])[0].get("last_sync") if result.get("projects") else None,
                     "projects_count": len(result.get("projects", [])),
-                    "sensors_count": len(result.get("sensors", []))
+                    "sensors_count": len(result.get("sensors", [])),
+                    "hubs_count": len(result.get("hubs", []))
                 })
-                
+
                 return result
         except Exception as err:
             # Enhanced error handling for authentication failures
