@@ -22,6 +22,9 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 - 🧊 **Hub control** on legacy accounts: one `climate` entity per hub with ON/OFF and the behavior
   mode (manual / auto / planning)
 - 📶 **Connectivity binary sensor** per project (online/offline)
+- 🔌 **Per-zone on/off**: a `switch` per room (`switch.koolnova_<room>_power`) toggles the zone
+  straight from the dashboard; zone `climate` modes display as **On/Off** instead of Auto/Off (the
+  codes sent to the API are unchanged)
 - 🛡️ **Robust against the brittle API**: retries with exponential backoff on timeouts, network
   errors, rate limiting (429) and server errors (5xx); auto-refreshes the session token on 401;
   a 60 s per-request timeout; falls back to the `/devices/` endpoint when the main ones fail
@@ -36,6 +39,7 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 | `climate.koolnova_*` (project) | climate | Global control: target temperature (median of zones), project HVAC mode, ECO/stop attributes |
 | `climate.koolnova_*` (zone) | climate | One per room: temperature, setpoint, HVAC mode, fan speed |
 | `climate.koolnova_hub_*` | climate | Legacy hub, one per hub: ON/OFF + manual / auto / planning |
+| `switch.koolnova_<room>_power` | switch | One per room: power on/off toggle |
 | `sensor.koolnova_connectivity_status` | sensor | Online/offline + WiFi signal, last sync, per-room last update |
 | `binary_sensor.koolnova_connectivity_status` | binary_sensor | Online/offline per project, ready for automations |
 

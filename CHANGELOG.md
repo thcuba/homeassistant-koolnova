@@ -5,7 +5,7 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
-## [Unreleased]
+## [2.0.0] — 2026-08-16
 
 ### Added
 
@@ -146,6 +146,7 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 Initial release: projects and zones as `climate` entities, with temperature and mode control.
 
+[2.0.0]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v2.0.0
 [1.4.0]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.4.0
 [1.3.2]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.2
 [1.3.1]: https://github.com/luisgsluis/homeassistant-koolnova/releases/tag/v1.3.1
