@@ -108,5 +108,13 @@
         "name": "Connectivity Status"
       }
     }
+  },
+  "entity_component": {
+    "koolnova_zone": {
+      "state": {
+        "auto": "On",
+        "off": "Off"
+      }
+    }
   }
 }

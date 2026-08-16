@@ -108,5 +108,13 @@
         "name": "Estado de Conectividad"
       }
     }
+  },
+  "entity_component": {
+    "koolnova_zone": {
+      "state": {
+        "auto": "Encendido",
+        "off": "Apagado"
+      }
+    }
   }
 }

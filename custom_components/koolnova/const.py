@@ -10,7 +10,7 @@ from homeassistant.components.climate import (
 )
 
 DOMAIN = "koolnova"
-PLATFORMS = ["climate", "binary_sensor"]
+PLATFORMS = ["climate", "binary_sensor", "switch"]
 
 # CONFIGURABLE: defaults and limits.
 # IMPORTANT: Koolnova bans IPs automatically when the API is polled more than

@@ -140,7 +140,7 @@ class LimitsTest(unittest.TestCase):
 class PlatformsTest(unittest.TestCase):
     def test_domain_and_platforms(self):
         self.assertEqual(const.DOMAIN, "koolnova")
-        self.assertEqual(const.PLATFORMS, ["climate", "binary_sensor"])
+        self.assertEqual(const.PLATFORMS, ["climate", "binary_sensor", "switch"])
 
 
 if __name__ == "__main__":

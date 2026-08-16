@@ -16,9 +16,10 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   `/hub/{id}/Manual/…`) are documented in [docs/API.md](docs/API.md).
 - **Connectivity binary sensor per project** (`binary_sensor.koolnova_connectivity_status`), a
   proper on/off entity ready for automations alongside the existing connectivity sensor.
-- **Per-zone on/off**: zone `climate` entities now support `TURN_ON`/`TURN_OFF`, so the thermostat
-  card shows a power button directly on the dashboard and `climate.turn_on`/`climate.turn_off`
-  work per room (OFF = status `02`, ON = AUTO).
+- **Per-zone on/off**: a `switch` entity per room (`switch.koolnova_<room>_power`) turns the zone
+  on/off directly from the dashboard (OFF = status `02`, ON = AUTO). Zone `climate` entities also
+  support `TURN_ON`/`TURN_OFF`, and their HVAC modes are relabelled in the UI as **On/Off** instead
+  of Auto/Off (the codes sent to the API are unchanged).
 - **Italian translation** (`translations/it.json`).
 - **`/devices/` fallback**: when the main `topics` endpoints fail, the coordinator retries through
   `/devices/` so the integration degrades instead of going unavailable.

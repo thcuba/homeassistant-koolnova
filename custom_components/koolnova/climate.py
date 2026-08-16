@@ -415,6 +415,10 @@ class KoolnovaProjectEntity(ClimateEntity):
 class KoolnovaZoneEntity(ClimateEntity):
     """Individual room zone as a climate device."""
 
+    # Relabels the zone's HVAC modes in the UI ("auto" shows as "On"): the
+    # codes sent to the API are untouched (see entity_component translations).
+    _attr_translation_key = "koolnova_zone"
+
     def __init__(self, coordinator, config_entry, sensor):
         self.coordinator = coordinator
         self.config_entry = config_entry

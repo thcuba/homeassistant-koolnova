@@ -108,5 +108,13 @@
         "name": "Stato di connettività"
       }
     }
+  },
+  "entity_component": {
+    "koolnova_zone": {
+      "state": {
+        "auto": "Acceso",
+        "off": "Spento"
+      }
+    }
   }
 }
