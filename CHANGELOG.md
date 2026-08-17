@@ -5,6 +5,23 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [2.0.1] — 2026-08-17
+
+### Added
+
+- **Global on/off for the project entity.** `KoolnovaProjectEntity` (`climate.koolnova_<project>`,
+  e.g. "Control Global") now supports `TURN_ON`/`TURN_OFF`: turning on pushes `auto` status to every
+  zone, turning off pushes `off` status to every zone — the same per-zone mechanism already used by
+  `async_set_preset_mode`. The project's own `mode`/`is_stop` fields are echoed back by the API but
+  were confirmed not to drive the hardware, so they are no longer written by these actions.
+
+### Fixed
+
+- The project entity's `hvac_mode` no longer clamps to `off` whenever the real mode falls outside
+  the configured (selectable) `project_hvac_modes`. It now reports `off` based on the aggregated
+  zone status (same aggregate as `preset_mode`) and the compressor mode (`cool`/`heat`) otherwise,
+  so the on/off toggle in the UI reflects what actually happened instead of always showing off.
+
 ## [2.0.0] — 2026-08-16
 
 ### Added

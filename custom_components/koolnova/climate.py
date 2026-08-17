@@ -81,9 +81,11 @@ class KoolnovaProjectEntity(ClimateEntity):
 
         self._attr_unique_id = f"{config_entry.entry_id}_project"
         self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE | 
+            ClimateEntityFeature.TARGET_TEMPERATURE |
             ClimateEntityFeature.FAN_MODE |
-            ClimateEntityFeature.PRESET_MODE
+            ClimateEntityFeature.PRESET_MODE |
+            ClimateEntityFeature.TURN_ON |
+            ClimateEntityFeature.TURN_OFF
         )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
@@ -188,12 +190,19 @@ class KoolnovaProjectEntity(ClimateEntity):
 
     @property
     def hvac_mode(self):
-        """Return current project HVAC mode."""
+        """Return current project HVAC mode.
+
+        The project's own `mode`/`is_stop` fields are echoed back by the API
+        but don't drive the hardware (confirmed live): the real global on/off
+        is per-zone status, same as `preset_mode` below. Off is reported when
+        most zones are off (or there are none); otherwise the project's
+        compressor mode (cool/heat) is reported, even if it falls outside the
+        configured (selectable) project_hvac_modes.
+        """
         self._update_project_data()
-        current_mode = KOOLNOVA_TO_HVAC_MODE.get(self._project["Mode"], HVACMode.OFF)
-        if current_mode not in self.hvac_modes:
+        if self.preset_mode in (None, HVACMode.OFF.value):
             return HVACMode.OFF
-        return current_mode
+        return KOOLNOVA_TO_HVAC_MODE.get(self._project["Mode"], HVACMode.OFF)
 
     @property
     def target_temperature(self):
@@ -411,6 +420,54 @@ class KoolnovaProjectEntity(ClimateEntity):
         except Exception as err:
             _LOGGER.error("Error setting global temperature: %s", err)
             async_create(self.hass, f"Error setting global temperature: {err}", title="Koolnova Global Temperature")
+
+    async def async_turn_on(self):
+        """Turn the project on: push AUTO to every zone, regardless of the configured
+        (selectable) project/zone HVAC modes.
+
+        The project's `mode`/`is_stop` fields are echoed back by the API but
+        don't drive the hardware (confirmed live): the actual global on/off is
+        per-zone status, same mechanism as `async_set_preset_mode` below.
+        """
+        status_code = HVAC_TO_KOOLNOVA_ZONE_STATUS[HVACMode.AUTO]
+        self._global_zone_hvac_mode = HVACMode.AUTO
+        self.async_write_ha_state()
+
+        _LOGGER.info("Turning project on: setting all zones to auto")
+
+        try:
+            result = await self.coordinator.async_update_all_sensors_status(status_code)
+            if result.get("failed", 0) > 0:
+                async_create(
+                    self.hass,
+                    f"Turning project on completed with some failures: "
+                    f"{result.get('updated', 0)} successful, {result.get('failed', 0)} failed",
+                    title="Koolnova Global Zone Control",
+                )
+        except Exception as err:
+            _LOGGER.error("Error turning on project: %s", err)
+            async_create(self.hass, f"Error turning on project: {err}", title="Koolnova Global Zone Control")
+
+    async def async_turn_off(self):
+        """Turn the project off: push OFF to every zone (see async_turn_on)."""
+        status_code = HVAC_TO_KOOLNOVA_ZONE_STATUS[HVACMode.OFF]
+        self._global_zone_hvac_mode = HVACMode.OFF
+        self.async_write_ha_state()
+
+        _LOGGER.info("Turning project off: setting all zones to off")
+
+        try:
+            result = await self.coordinator.async_update_all_sensors_status(status_code)
+            if result.get("failed", 0) > 0:
+                async_create(
+                    self.hass,
+                    f"Turning project off completed with some failures: "
+                    f"{result.get('updated', 0)} successful, {result.get('failed', 0)} failed",
+                    title="Koolnova Global Zone Control",
+                )
+        except Exception as err:
+            _LOGGER.error("Error turning off project: %s", err)
+            async_create(self.hass, f"Error turning off project: {err}", title="Koolnova Global Zone Control")
 
 class KoolnovaZoneEntity(ClimateEntity):
     """Individual room zone as a climate device."""
