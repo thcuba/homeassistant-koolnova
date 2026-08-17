@@ -5,6 +5,20 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [2.0.2] — 2026-08-17
+
+### Added
+
+- **`compressor_mode` attribute** on the project entity: the raw cool/heat selection, independent
+  of on/off. `hvac_mode`/`state` fold on/off into the report (`off` whenever most zones are off,
+  regardless of the last selected mode), which made it impossible for a dashboard to tell "off in
+  cool mode" from "off in heat mode" — e.g. to conditionally show/hide a card by mode without it
+  also disappearing whenever the project is off. `compressor_mode` always reflects the last
+  cool/heat selection.
+- **[docs/DASHBOARDS.md](docs/DASHBOARDS.md)**: example Lovelace dashboards — one with plain Home
+  Assistant cards, one with [Mushroom](https://github.com/piitaya/lovelace-mushroom) — plus patterns
+  for shared per-floor fan hardware and mode-based conditional visibility. Linked from the README.
+
 ## [2.0.1] — 2026-08-17
 
 ### Added

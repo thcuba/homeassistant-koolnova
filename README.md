@@ -46,6 +46,14 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 The integration also fires a `koolnova_update_completed` event after every poll with counts and a
 `lastsync` timestamp — handy for automation triggers. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+## Dashboards
+
+No dashboard ships with the integration — you build one from the entities above. Two starting
+points are documented in [docs/DASHBOARDS.md](docs/DASHBOARDS.md): a **plain Home Assistant** one
+(core `thermostat` + `tile` cards, no extra dependency) and a
+**[Mushroom](https://github.com/piitaya/lovelace-mushroom)** one (more compact). That doc also
+covers other patterns, like grouping fan control by floor instead of by zone.
+
 ## Installation
 
 ### HACS (recommended)
@@ -78,6 +86,7 @@ Options available afterwards through *Configure*:
 ## Documentation
 
 - [CHANGELOG.md](CHANGELOG.md) — version history
+- [docs/DASHBOARDS.md](docs/DASHBOARDS.md) — example Lovelace dashboards
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common problems
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — architecture, test environment and releases
 - [docs/API.md](docs/API.md) — the Koolnova API, documented by reverse engineering

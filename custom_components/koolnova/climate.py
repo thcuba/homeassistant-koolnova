@@ -277,6 +277,11 @@ class KoolnovaProjectEntity(ClimateEntity):
         attrs = {
             "eco_mode": self._project["eco"],
             "is_stop": self._project.get("is_stop"),
+            # Raw compressor mode (cool/heat), independent of on/off: unlike `hvac_mode`/`state`
+            # (which report off whenever most zones are off), this keeps reporting the last
+            # cool/heat selection even while the project is off, for dashboards that need to
+            # distinguish "off in cool mode" from "off in heat mode".
+            "compressor_mode": KOOLNOVA_TO_HVAC_MODE.get(self._project["Mode"], HVACMode.OFF).value,
             "total_zones": sensors_count,
             "control_type": "global_controller",
             "configured_project_modes": [mode.value for mode in self._get_project_hvac_modes()],
