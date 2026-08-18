@@ -23,7 +23,8 @@ DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds, doubles each attempt
 DEFAULT_RETRY_MAX_DELAY = 30.0
 
 # Per-request timeout. Without one, a hung request blocks a polling cycle forever.
-REQUEST_TIMEOUT = 60
+# 45s is the value recommended by Koolnova support.
+REQUEST_TIMEOUT = 45
 
 class KoolnovaClientSession(Session):
     """HTTP session manager for Koolnova api.
@@ -41,6 +42,7 @@ class KoolnovaClientSession(Session):
         email: Optional[str] = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_backoff: float = DEFAULT_RETRY_BACKOFF,
+        request_timeout: float = REQUEST_TIMEOUT,
     ) -> None:
         """Initialize and authenticate.
 
@@ -51,6 +53,7 @@ class KoolnovaClientSession(Session):
                 authenticates on (see _authenticate)
             max_retries: retry count for rest_request
             retry_backoff: base delay (seconds) for the exponential backoff
+            request_timeout: per-request timeout in seconds for auth and API calls
         """
         Session.__init__(self)
         self.username = username
@@ -58,6 +61,7 @@ class KoolnovaClientSession(Session):
         self.email = email
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
+        self.request_timeout = request_timeout
         self.bearerToken: Optional[str] = None
         self.token_created: float = 0.0
         self._authenticate()
@@ -93,7 +97,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(max_attempts):
             try:
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=60)
+                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=self.request_timeout)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, max_attempts, e)
                 response = None
@@ -202,7 +206,7 @@ class KoolnovaClientSession(Session):
         backoff = self.retry_backoff if retry_backoff is None else retry_backoff
 
         # Without an explicit timeout a hung request blocks the polling cycle.
-        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+        kwargs.setdefault("timeout", self.request_timeout)
 
         headers_auth = {
             "Authorization": "Bearer " + (self.bearerToken or ""),

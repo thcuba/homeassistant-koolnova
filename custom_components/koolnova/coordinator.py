@@ -16,6 +16,8 @@ from .const import (
     MIN_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
     DEFAULT_PROJECT_UPDATE_FREQUENCY,
+    CONF_REQUEST_TIMEOUT,
+    DEFAULT_REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,7 +56,11 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         self.client = KoolnovaAPIRestClient(
             username="",
             email=config_data["email"],
-            password=config_data["password"]
+            password=config_data["password"],
+            request_timeout=options_data.get(
+                CONF_REQUEST_TIMEOUT,
+                config_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT)
+            ),
         )
         self.config_entry = config_entry
         self.data = {"projects": [], "sensors": [], "hubs": []}
@@ -565,6 +571,17 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         self._project_update_frequency, new_frequency)
             self._project_update_frequency = new_frequency
             self._project_update_counter = 0  # Reset counter with new frequency
+
+        # Request timeout
+        new_timeout = options_data.get(
+            CONF_REQUEST_TIMEOUT,
+            config_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT)
+        )
+
+        if new_timeout != self.client.request_timeout:
+            _LOGGER.info("Updating API request timeout from %s to %s seconds",
+                        self.client.request_timeout, new_timeout)
+            self.client.set_request_timeout(new_timeout)
 
     # Backward compatibility methods
     async def async_update_sensor(self, sensor_id: int, payload: dict) -> dict:

@@ -82,6 +82,7 @@ Options available afterwards through *Configure*:
 | Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
 | Temperature range | 21–27 °C | 15–35 °C |
 | Temperature precision | 0.5 °C | 0.5 or 1 °C |
+| API request timeout | 45 s | 5–300 s |
 
 ## Documentation
 

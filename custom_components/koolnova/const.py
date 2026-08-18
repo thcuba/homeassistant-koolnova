@@ -22,6 +22,12 @@ DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # refresh projects every N updates
 MIN_PROJECT_UPDATE_FREQUENCY = 1      # configurable minimum (always refresh)
 MAX_PROJECT_UPDATE_FREQUENCY = 300    # configurable maximum
 
+# Per-request HTTP timeout for Koolnova API calls (seconds).
+# 45s is the value recommended by Koolnova support (see docs/API.md).
+DEFAULT_REQUEST_TIMEOUT = 45   # seconds
+MIN_REQUEST_TIMEOUT = 5        # configurable minimum
+MAX_REQUEST_TIMEOUT = 300      # configurable maximum
+
 DEFAULT_PROJECT_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT]
 DEFAULT_ZONE_HVAC_MODES = [HVACMode.OFF, HVACMode.AUTO]
 
@@ -43,6 +49,7 @@ CONF_ZONE_HVAC_MODES = "zone_hvac_modes"
 CONF_MIN_TEMP = "min_temp"
 CONF_MAX_TEMP = "max_temp"
 CONF_TEMP_PRECISION = "temp_precision"
+CONF_REQUEST_TIMEOUT = "request_timeout"
 
 # HVAC mode mappings for projects - only the forward definition is written by hand
 KOOLNOVA_TO_HVAC_MODE = {

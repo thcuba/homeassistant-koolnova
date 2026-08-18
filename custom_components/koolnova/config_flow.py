@@ -38,6 +38,10 @@ from .const import (
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TEMP_PRECISION,
+    DEFAULT_REQUEST_TIMEOUT,
+    MIN_REQUEST_TIMEOUT,
+    MAX_REQUEST_TIMEOUT,
+    CONF_REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -90,6 +94,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_MIN_TEMP: DEFAULT_MIN_TEMP,
                 CONF_MAX_TEMP: DEFAULT_MAX_TEMP,
                 CONF_TEMP_PRECISION: DEFAULT_TEMP_PRECISION,
+                CONF_REQUEST_TIMEOUT: DEFAULT_REQUEST_TIMEOUT,
             }
 
             return self.async_create_entry(title=info["title"], data=config_data)
@@ -166,6 +171,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_min_temp = current_options.get(CONF_MIN_TEMP, current_data.get(CONF_MIN_TEMP, DEFAULT_MIN_TEMP))
         current_max_temp = current_options.get(CONF_MAX_TEMP, current_data.get(CONF_MAX_TEMP, DEFAULT_MAX_TEMP))
         current_precision = current_options.get(CONF_TEMP_PRECISION, current_data.get(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION))
+        current_request_timeout = current_options.get(CONF_REQUEST_TIMEOUT, current_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT))
 
         return vol.Schema({
             vol.Required(CONF_UPDATE_INTERVAL, default=current_interval): vol.All(
@@ -191,6 +197,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Range(min=MIN_CONFIGURABLE_TEMP, max=MAX_CONFIGURABLE_TEMP)
             ),
             vol.Required(CONF_TEMP_PRECISION, default=current_precision): vol.In(AVAILABLE_TEMP_PRECISIONS),
+            vol.Required(CONF_REQUEST_TIMEOUT, default=current_request_timeout): vol.All(
+                cv.positive_int,
+                vol.Range(min=MIN_REQUEST_TIMEOUT, max=MAX_REQUEST_TIMEOUT)
+            ),
         })
 
 class CannotConnect(Exception):

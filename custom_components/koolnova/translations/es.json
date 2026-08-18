@@ -31,7 +31,8 @@
           "zone_hvac_modes": "Modos HVAC de las Zonas",
           "min_temp": "Temperatura Mínima",
           "max_temp": "Temperatura Máxima",
-          "temp_precision": "Precisión de Temperatura"
+          "temp_precision": "Precisión de Temperatura",
+          "request_timeout": "Timeout de Petición a la API (segundos)"
         }
       }
     },

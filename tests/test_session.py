@@ -268,17 +268,27 @@ class RequestTimeoutTest(unittest.TestCase):
         with patch("requests.Session.request", return_value=_ok_response()):
             self.session = KoolnovaClientSession("user@example.com", "secret")
 
-    def test_defaults_to_a_60s_timeout(self):
+    def test_defaults_to_a_45s_timeout(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:
             self.session.rest_request("GET", "projects/")
 
-        self.assertEqual(request.call_args.kwargs["timeout"], 60)
+        self.assertEqual(request.call_args.kwargs["timeout"], 45)
 
     def test_an_explicit_timeout_is_preserved(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:
             self.session.rest_request("GET", "projects/", timeout=10)
 
         self.assertEqual(request.call_args.kwargs["timeout"], 10)
+
+    def test_a_configured_timeout_applies_to_auth_and_api_calls(self):
+        with patch("requests.Session.request", return_value=_ok_response()) as request:
+            session = KoolnovaClientSession("user@example.com", "secret", request_timeout=10)
+            session.rest_request("GET", "projects/")
+
+        auth_timeout = request.call_args_list[0].kwargs["timeout"]
+        api_timeout = request.call_args_list[1].kwargs["timeout"]
+        self.assertEqual(auth_timeout, 10)
+        self.assertEqual(api_timeout, 10)
 
 
 if __name__ == "__main__":

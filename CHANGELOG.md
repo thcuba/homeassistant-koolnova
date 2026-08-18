@@ -5,6 +5,16 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [2.0.3] — 2026-08-18
+
+### Added
+
+- **Configurable API request timeout.** The per-request HTTP timeout for Koolnova API calls (auth
+  and data endpoints alike) was hardcoded at 60 s. It is now a *Configure* option on the
+  integration, defaulting to **45 s** — the value recommended by Koolnova support — with a
+  configurable range of 5–300 s. The change applies without a full entry reload: the new timeout is
+  pushed to the live HTTP session. See [docs/API.md](docs/API.md).
+
 ## [2.0.2] — 2026-08-17
 
 ### Added

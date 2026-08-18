@@ -17,6 +17,9 @@ Base: `https://api.koolnova.com` (Django REST framework).
 2. **Trailing slash on every path.** `projects/` yes, `projects` no.
 3. **At most one request every 30 s.** Koolnova bans your IP automatically above that rate, and
    also on repeated failed logins.
+4. **45 s request timeout.** Koolnova support recommends a 45 s per-request timeout (the integration
+   default, configurable via `request_timeout` in the options flow). A hung request without a
+   timeout would otherwise block a polling cycle forever.
 
 ## Common headers
 
