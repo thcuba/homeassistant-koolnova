@@ -1,4 +1,4 @@
-# Koolnova Home Assistant Integration
+ï»¿# Koolnova Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
@@ -15,11 +15,11 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 For developers and advanced users, see the detailed docs:
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Architecture and import rules
-- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common problems and solutions
-- **[DEV_ENV.md](docs/DEV_ENV.md)** — Development environment setup
-- **[API.md](docs/API.md)** — Koolnova API reference
-- **[RELEASE.md](docs/RELEASE.md)** — Release history and process
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** ï¿½ Architecture and import rules
+- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** ï¿½ Common problems and solutions
+- **[DEV_ENV.md](docs/DEV_ENV.md)** ï¿½ Development environment setup
+- **[API.md](docs/API.md)** ï¿½ Koolnova API reference
+- **[RELEASE.md](docs/RELEASE.md)** ï¿½ Release history and process
 
 ### Features
 
@@ -67,13 +67,13 @@ For developers and advanced users, see the detailed docs:
 
 | Option | Default | Range |
 |---|---|---|
-| Update interval | 60 s | 30–3600 s |
-| Project refresh frequency | every 10 cycles | 1–300 |
+| Update interval | 60 s | 30ï¿½3600 s |
+| Project refresh frequency | every 10 cycles | 1ï¿½300 |
 | Project HVAC modes | COOL, HEAT | COOL / HEAT / OFF / AUTO |
 | Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
-| Temperature range | 21–27 °C | 15–35 °C |
-| Temperature precision | 0.5 °C | 0.5 or 1 °C |
-| API request timeout | 45 s | 5–300 s |
+| Temperature range | 21ï¿½27 ï¿½C | 15ï¿½35 ï¿½C |
+| Temperature precision | 0.5 ï¿½C | 0.5 or 1 ï¿½C |
+| API request timeout | 60 s | 60â€“300 s |
 
 ### Support
 

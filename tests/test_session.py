@@ -268,11 +268,11 @@ class RequestTimeoutTest(unittest.TestCase):
         with patch("requests.Session.request", return_value=_ok_response()):
             self.session = KoolnovaClientSession("user@example.com", "secret")
 
-    def test_defaults_to_a_45s_timeout(self):
+    def test_defaults_to_a_60s_timeout(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:
             self.session.rest_request("GET", "projects/")
 
-        self.assertEqual(request.call_args.kwargs["timeout"], 45)
+            self.assertEqual(request.call_args.kwargs["timeout"], 60)
 
     def test_an_explicit_timeout_is_preserved(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:

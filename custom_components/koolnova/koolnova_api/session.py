@@ -25,8 +25,8 @@ DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds
 DEFAULT_RETRY_MAX_BACKOFF = 30.0  # max delay in seconds
 
 # Per-request timeout. Without one, a hung request blocks a polling cycle forever.
-# 45s is the value recommended by Koolnova support.
-REQUEST_TIMEOUT = 45
+# 60s ensures cloud requests never time out too aggressively.
+REQUEST_TIMEOUT = 60
 
 # Session keepalive: refresh token if last request was longer ago than this
 SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
