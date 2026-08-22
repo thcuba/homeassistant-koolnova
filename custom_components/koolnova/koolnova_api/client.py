@@ -63,10 +63,7 @@ class KoolnovaAPIRestClient:
         return self.session
 
 
-
-
-
-    def get_project(self) -> Dict[str, Any]:
+            def get_project(self) -> Dict[str, Any]:
 
         # Use the same endpoint shape as the webapp: trailing slash + common
         # query params. Add browser-like headers to match the web request.

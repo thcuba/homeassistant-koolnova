@@ -65,14 +65,10 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
         )
 
     @property
-    def is_on(self):
-        """Return true if system is online."""
-        topic_id = self._project.get("Topic_id") if self._project else None
-        all_sensors = self.coordinator.data.get("sensors", [])
-
-        sensors = all_sensors
-        if topic_id is not None:
-            sensors = [s for s in all_sensors if s.get("Topic_id") == topic_id]
+        def is_on(self):
+            """Return true if system is online."""
+            topic_id = self._project.get("Topic_id") if self._project else None
+            sensors = self.coordinator.get_project_sensors(topic_id)
 
         if not sensors:
             return False
@@ -81,14 +77,10 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
         return topic_info.get("is_online", False)
 
     @property
-    def extra_state_attributes(self):
-        """Return connectivity attributes in English snake_case."""
-        topic_id = self._project.get("Topic_id") if self._project else None
-        all_sensors = self.coordinator.data.get("sensors", [])
-
-        sensors = all_sensors
-        if topic_id is not None:
-            sensors = [s for s in all_sensors if s.get("Topic_id") == topic_id]
+        def extra_state_attributes(self):
+            """Return connectivity attributes in English snake_case."""
+            topic_id = self._project.get("Topic_id") if self._project else None
+            sensors = self.coordinator.get_project_sensors(topic_id)
 
         if not sensors:
             return {}
