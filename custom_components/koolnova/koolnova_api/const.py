@@ -29,7 +29,8 @@ COMMON_HEADERS = {
 PATCH_HEADERS = COMMON_HEADERS.copy()
 PATCH_HEADERS["content-type"] = "application/json"
 
-# Cooldown (seconds) before retrying authentication after a failed login.
+# Deprecated alias kept for backwards compatibility
+USER_AGENT = FULL_USER_AGENT
 # Koolnova bans IPs automatically when it detects repeated failed logins
 # (see issue #4), so never re-attempt auth in a tight polling loop.
 AUTH_FAILURE_COOLDOWN = 300

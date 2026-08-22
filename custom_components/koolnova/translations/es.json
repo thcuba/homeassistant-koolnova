@@ -1,83 +1,114 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "title": "Configurar Koolnova",
-                "description": "Introduce las credenciales de tu cuenta Koolnova",
-                "data": {
-                    "email": "Correo ElectrÛnico",
-                    "password": "ContraseÒa"
-                }
-            }
-        },
-        "error": {
-            "cannot_connect": "Error al conectar con la API de Koolnova",
-            "invalid_auth": "Email o contraseÒa incorrectos",
-            "unknown": "Error inesperado"
-        },
-        "abort": {
-            "already_configured": "La cuenta ya est· configurada"
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Koolnova",
+        "description": "Introduce las credenciales de tu cuenta Koolnova",
+        "data": {
+          "email": "Correo Electr√≥nico",
+          "password": "Contrase√±a"
         }
+      }
     },
-    "options": {
-        "step": {
-            "user": {
-                "title": "Configurar Opciones de Koolnova",
-                "description": "Personaliza el comportamiento y lÌmites de la integraciÛn",
-                "data": {
-                    "update_interval": "Intervalo de ActualizaciÛn (segundos)",
-                    "project_update_frequency": "Frecuencia de ActualizaciÛn de Proyectos (ciclos)",
-                    "project_hvac_modes": "Modos HVAC del Proyecto",
-                    "zone_hvac_modes": "Modos HVAC de las Zonas",
-                    "min_temp": "Temperatura MÌnima",
-                    "max_temp": "Temperatura M·xima",
-                    "temp_precision": "PrecisiÛn de Temperatura",
-                    "request_timeout": "Timeout de PeticiÛn a la API (segundos)"
-                }
-            }
-        },
-        "error": {
-            "temp_range_invalid": "La temperatura mÌnima debe ser menor que la m·xima"
-        }
+    "error": {
+      "cannot_connect": "Error al conectar con la API de Koolnova",
+      "invalid_auth": "Email o contrase√±a incorrectos",
+      "unknown": "Error inesperado"
     },
-    "entity": {
-        "climate": {
-            "koolnova_project": {
-                "name": "Control Global",
-                "state_attributes": {
-                    "preset_mode": {
-                        "name": "Modo Zonas",
-                        "state": {
-                            "off": "Apagado",
-                            "auto": "Auto"
-                        }
-                    }
-                }
-            },
-            "koolnova_hub": {
-                "name": "Control de Hub",
-                "state_attributes": {
-                    "preset_mode": {
-                        "name": "Modo",
-                        "state": {
-                            "manual": "Manual",
-                            "auto": "Autom·tico",
-                            "planning": "ProgramaciÛn"
-                        }
-                    }
-                }
-            },
-            "koolnova_zone": {
-                "state": {
-                    "auto": "Encendido",
-                    "off": "Apagado"
-                }
-            }
-        },
-        "binary_sensor": {
-            "connectivity_status": {
-                "name": "Estado de Conectividad"
-            }
-        }
+    "abort": {
+      "already_configured": "La cuenta ya est√° configurada"
     }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Configurar Opciones de Koolnova",
+        "description": "Personaliza el comportamiento y l√≠mites de la integraci√≥n",
+        "data": {
+          "update_interval": "Intervalo de Actualizaci√≥n (segundos)",
+          "project_update_frequency": "Frecuencia de Actualizaci√≥n de Proyectos (ciclos)",
+          "project_hvac_modes": "Modos HVAC del Proyecto",
+          "zone_hvac_modes": "Modos HVAC de las Zonas",
+          "min_temp": "Temperatura M√≠nima",
+          "max_temp": "Temperatura M√°xima",
+          "temp_precision": "Precisi√≥n de Temperatura",
+          "request_timeout": "Timeout de Petici√≥n a la API (segundos)"
+        }
+      }
+    },
+    "error": {
+      "temp_range_invalid": "La temperatura m√≠nima debe ser menor que la m√°xima"
+    }
+  },
+  "entity": {
+    "climate": {
+      "koolnova_project": {
+        "name": "Control Global",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Modo Zonas",
+            "state": {
+              "off": "Apagado",
+              "auto": "Auto"
+            }
+          }
+        }
+      },
+      "koolnova_hub": {
+        "name": "Control de Hub",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Modo",
+            "state": {
+              "manual": "Manual",
+              "auto": "Autom√°tico",
+              "planning": "Programaci√≥n"
+            }
+          }
+        }
+      },
+      "koolnova_zone": {
+        "state": {
+          "auto": "Encendido",
+          "off": "Apagado"
+        }
+      },
+      "connectivity_status": {
+        "name": "Connectivity Status",
+        "state_attributes": {
+          "wifi_signal": {
+            "name": "WiFi Signal"
+          },
+          "online": {
+            "name": "Online"
+          },
+          "last_update": {
+            "name": "Last Update"
+          },
+          "rooms_last_update": {
+            "name": "Rooms Last Update"
+          }
+        }
+      }
+    },
+    "sensor": {
+      "connectivity_status": {
+        "name": "Connectivity Status",
+        "state_attributes": {
+          "wifi_signal": {
+            "name": "WiFi Signal"
+          },
+          "online": {
+            "name": "Online"
+          },
+          "last_update": {
+            "name": "Last Update"
+          },
+          "rooms_last_update": {
+            "name": "Rooms Last Update"
+          }
+        }
+      }
+    }
+  }
 }
