@@ -1,10 +1,10 @@
-"""Sensor entities for Koolnova."""
+"""Binary sensor entities for Koolnova."""
 import logging
 from datetime import datetime
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
     BinarySensorDeviceClass,
+    BinarySensorEntity,
 )
 from homeassistant.helpers.entity import DeviceInfo
 
@@ -13,16 +13,15 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Koolnova sensor entities."""
+    """Set up Koolnova binary sensor entities."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = []
 
-    # Create connectivity sensor for each project
-    if coordinator.data.get("projects"):
-        for project in coordinator.data["projects"]:
+    projects = coordinator.data.get("projects", [])
+    if projects:
+        for project in projects:
             entities.append(KoolnovaConnectivitySensor(coordinator, entry, project))
     else:
-        # Fallback if no projects (should not happen with proper discovery)
         entities.append(KoolnovaConnectivitySensor(coordinator, entry))
 
     async_add_entities(entities, update_before_add=False)
@@ -34,10 +33,6 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
     _attr_translation_key = "connectivity_status"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_should_poll = False  # Uses coordinator push updates via listener
-
-    async def async_update(self):
-        """Refresh sensor data from the coordinator."""
-        await self.coordinator.async_request_refresh()
 
     def __init__(self, coordinator, config_entry, project=None):
         """Initialize the connectivity sensor."""
@@ -65,10 +60,10 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
         )
 
     @property
-        def is_on(self):
-            """Return true if system is online."""
-            topic_id = self._project.get("Topic_id") if self._project else None
-            sensors = self.coordinator.get_project_sensors(topic_id)
+    def is_on(self):
+        """Return true if system is online."""
+        topic_id = self._project.get("Topic_id") if self._project else None
+        sensors = self.coordinator.get_project_sensors(topic_id)
 
         if not sensors:
             return False
@@ -77,10 +72,10 @@ class KoolnovaConnectivitySensor(BinarySensorEntity):
         return topic_info.get("is_online", False)
 
     @property
-        def extra_state_attributes(self):
-            """Return connectivity attributes in English snake_case."""
-            topic_id = self._project.get("Topic_id") if self._project else None
-            sensors = self.coordinator.get_project_sensors(topic_id)
+    def extra_state_attributes(self):
+        """Return connectivity attributes in English snake_case."""
+        topic_id = self._project.get("Topic_id") if self._project else None
+        sensors = self.coordinator.get_project_sensors(topic_id)
 
         if not sensors:
             return {}

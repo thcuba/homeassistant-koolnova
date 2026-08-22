@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in the Koolnova integration is broken
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      description: From the HACS entry or CHANGELOG.md.
+      placeholder: e.g. 1.3.2
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: dropdown
+    id: account
+    attributes:
+      label: Account type
+      options:
+        - Modern (zones + project, no hub)
+        - Legacy (has a physical hub)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant home-assistant.log lines. Redact any Koolnova email or credentials.
+      render: shell
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Entities affected, integration options configured, anything relevant.

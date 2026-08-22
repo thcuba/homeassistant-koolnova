@@ -15,7 +15,7 @@ from requests.exceptions import HTTPError
 
 #logging.basicConfig(level=logging.DEBUG)
 
-from .const import KOOLNOVA_API_URL, KOOLNOVA_AUTH_URL, USER_AGENT
+from .const import KOOLNOVA_API_URL, KOOLNOVA_AUTH_URL, USER_AGENT, COMMON_HEADERS, FULL_USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +23,10 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds
 DEFAULT_RETRY_MAX_BACKOFF = 30.0  # max delay in seconds
+
+# Per-request timeout. Without one, a hung request blocks a polling cycle forever.
+# 45s is the value recommended by Koolnova support.
+REQUEST_TIMEOUT = 45
 
 # Session keepalive: refresh token if last request was longer ago than this
 SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
@@ -44,7 +48,8 @@ class KoolnovaClientSession(Session):
 
     def __init__(self, username: str, password: str, email: Optional[str] = None,
                  max_retries: int = DEFAULT_MAX_RETRIES,
-                 retry_backoff: float = DEFAULT_RETRY_BACKOFF) -> None:
+                 retry_backoff: float = DEFAULT_RETRY_BACKOFF,
+                 request_timeout: float = REQUEST_TIMEOUT) -> None:
         """Initialize and authenticate.
 
         Args:
@@ -53,6 +58,7 @@ class KoolnovaClientSession(Session):
             email: optional email associated to the account
             max_retries: number of retry attempts for rest_request
             retry_backoff: base delay for exponential backoff
+            request_timeout: per-request timeout in seconds for auth and API calls
         """
         Session.__init__(self)
         self.username = username
@@ -60,6 +66,7 @@ class KoolnovaClientSession(Session):
         self.email = email
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
+        self.request_timeout = request_timeout
         self._last_request_time = time.time()
 
         _LOGGER.debug("Starting authentication for username '%s' (email: %s)", username, email)
@@ -75,16 +82,10 @@ class KoolnovaClientSession(Session):
 
         _LOGGER.debug("Auth payload: %s", {k: "***" if k == "password" else v for k, v in payload.items()})
 
-        # Add headers similar to browser request (helps servers routing based on Origin/UA)
-        headers_token = {
-            "accept": "application/json, text/plain, */*",
-            "content-type": "application/json",
-            "accept-language": "en",
-            "origin": "https://app.koolnova.com",
-            "referer": "https://app.koolnova.com/",
-            "cache-control": "no-cache",
-            "user-agent": USER_AGENT,  # <- USE CONSTANT
-        }
+        # Browser-like headers: since May 2026 the API returns 404 without the
+        # sec-ch-ua / sec-fetch-* headers and a modern Chrome UA (issue #4).
+        headers_token = COMMON_HEADERS.copy()
+        headers_token["content-type"] = "application/json"
 
         # Improved retry logic with exponential backoff for rate limiting
         response = None
@@ -94,7 +95,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(auth_max_attempts):
             try:
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=60)
+                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=self.request_timeout)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, auth_max_attempts, e)
                 response = None
@@ -168,16 +169,25 @@ class KoolnovaClientSession(Session):
         self.last_request_time = time.time()  # Track last API call time
         _LOGGER.debug("BearerToken of authentication : %s", self.bearerToken)
 
-    def _refresh_session(self) -> None:
-        """Re-authenticate and get a new token."""
+    def refresh_token(self) -> None:
+        """Re-authenticate and replace the bearer token.
+
+        Used when the API answers 401 (expired/invalid token) mid-session.
+        Only renews the token; the requests.Session itself is left untouched.
+        """
         _LOGGER.info("Refreshing session token...")
         try:
-            self.__init__(self.username, self.password, self.email, self.max_retries, self.retry_backoff)
+            self.__init__(self.username, self.password, self.email,
+                         self.max_retries, self.retry_backoff, self.request_timeout)
             _LOGGER.info("Session token refreshed successfully")
         except Exception as e:
             _LOGGER.error("Failed to refresh session: %s", e)
             self.bearerToken = None
             raise RuntimeError(f"Failed to refresh session: {e}") from e
+
+    def _refresh_session(self) -> None:
+        """Re-authenticate and get a new token."""
+        self.refresh_token()
 
     def _should_refresh_session(self) -> bool:
         """Check if session needs refresh based on age and heartbeat interval."""
@@ -222,10 +232,14 @@ class KoolnovaClientSession(Session):
             self._refresh_session()
 
         token = self.bearerToken if isinstance(self.bearerToken, str) else ""
+
+        # Without an explicit timeout a hung request blocks the polling cycle.
+        kwargs.setdefault("timeout", self.request_timeout)
+
         headers_auth = {
             "Authorization": "Bearer " + token,
             "Cache-Control": "no-cache",
-            "User-Agent": USER_AGENT,  # <- USE CONSTANT HERE
+            "User-Agent": FULL_USER_AGENT,
         }
         # Merge headers passed as argument
         headers = kwargs.pop("headers", {})
@@ -235,7 +249,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(retries + 1):
             try:
-                response = super().request(method, url, headers=headers_auth, timeout=60, **kwargs)
+                response = super().request(method, url, headers=headers_auth, **kwargs)
                 self.last_request_time = time.time()
 
                 # Handle 401: token expired or invalid -> refresh and retry

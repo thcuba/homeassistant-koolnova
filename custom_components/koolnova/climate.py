@@ -145,9 +145,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return [mode.value for mode in self._get_zone_hvac_modes()]
 
     @property
-        def preset_mode(self):
-            """Return most common zone HVAC mode among all zones in this project."""
-            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
+    def preset_mode(self):
+        """Return most common zone HVAC mode among all zones in this project."""
+        sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -205,9 +205,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return current_mode
 
     @property
-        def target_temperature(self):
-            """Return median of zones' target temperatures for this project."""
-            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
+    def target_temperature(self):
+        """Return median of zones target temperatures for this project."""
+        sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -223,9 +223,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return None
 
     @property
-        def current_temperature(self):
-            """Return average temperature of all zones in this project, rounded to nearest 0.5."""
-            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
+    def current_temperature(self):
+        """Return average temperature of all zones in this project, rounded to nearest 0.5."""
+        sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -248,10 +248,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         return self._project.get("is_online", False) and self.coordinator.last_update_success
 
     @property
-        def extra_state_attributes(self):
-            """Return extra state attributes."""
-            self._update_project_data()
-            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
+    def extra_state_attributes(self):
+        """Return extra state attributes."""
+        self._update_project_data()
+        sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
         sensors_count = len(sensors)
 
         # Get system connectivity data from sensors (more up-to-date)
@@ -259,9 +259,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         if sensors:
             topic_info = sensors[0].get("topic_info", {})  # Any sensor has the same global data
             system_connectivity = {
-                "system_rssi": topic_info.get("rssi"),
-                "online_status": topic_info.get("is_online"),  # More up-to-date than project data
-                "last_sync": topic_info.get("last_sync"),      # More up-to-date than project data
+                            "wifi_signal": topic_info.get("rssi"),
+                            "online": topic_info.get("is_online"),  # More up-to-date than project data
+                            "last_update": topic_info.get("last_sync"),      # More up-to-date than project data
             }
 
         zone_status_breakdown = {}
@@ -290,15 +290,25 @@ class KoolnovaProjectEntity(ClimateEntity):
         }
 
         # System connectivity data
-        if system_connectivity.get("system_rssi") is not None:
-            attrs["system_rssi"] = system_connectivity["system_rssi"]
-        if system_connectivity.get("online_status") is not None:
-            attrs["online_status"] = system_connectivity["online_status"]
-        if system_connectivity.get("last_sync"):
-            try:
-                attrs["system_last_sync"] = datetime.fromisoformat(system_connectivity["last_sync"])
-            except (ValueError, TypeError):
-                attrs["system_last_sync"] = system_connectivity["last_sync"]
+        if system_connectivity.get("wifi_signal") is not None:
+            attrs["wifi_signal"] = system_connectivity["wifi_signal"]
+            if system_connectivity.get("online") is not None:
+                attrs["online"] = system_connectivity["online"]
+            if system_connectivity.get("last_update"):
+                try:
+                    attrs["last_update"] = datetime.fromisoformat(system_connectivity["last_update"])
+                except (ValueError, TypeError):
+                    attrs["last_update"] = system_connectivity["last_update"]
+
+        # rooms_last_update: most recent update timestamp among all zones
+        if sensors:
+            update_times = [
+                sensor.get("Room_update_at")
+                for sensor in sensors
+                if sensor.get("Room_update_at")
+            ]
+            if update_times:
+                attrs["rooms_last_update"] = max(update_times)
 
         return attrs
 
