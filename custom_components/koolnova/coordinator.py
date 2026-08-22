@@ -180,18 +180,18 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             try:
                 sensors = self.client.get_sensors()
             except Exception as e:
-                            _LOGGER.warning("Primary sensors fetch failed, trying fallback: %s", e)
-                                            # Fallback gives full data (projects + sensors) - extract sensors
-                                            fallback_data = self._fetch_data_fallback()
-                                            if fallback_data:
-                                                sensors = fallback_data.get("sensors", [])
-                                                # Also update projects from fallback if we have them
-                                                if fallback_data.get("projects"):
-                                                    self.data["projects"] = fallback_data["projects"]
-                                                if fallback_data.get("hubs"):
-                                                    self.data["hubs"] = fallback_data["hubs"]
-                                            else:
-                                                raise
+                _LOGGER.warning("Primary sensors fetch failed, trying fallback: %s", e)
+                # Fallback gives full data (projects + sensors) - extract sensors
+                fallback_data = self._fetch_data_fallback()
+                if fallback_data:
+                    sensors = fallback_data.get("sensors", [])
+                    # Also update projects from fallback if we have them
+                    if fallback_data.get("projects"):
+                        self.data["projects"] = fallback_data["projects"]
+                    if fallback_data.get("hubs"):
+                        self.data["hubs"] = fallback_data["hubs"]
+                else:
+                    raise
 
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
             # Keep existing projects and hubs data, only update sensors

@@ -291,14 +291,14 @@ class KoolnovaProjectEntity(ClimateEntity):
 
         # System connectivity data
         if system_connectivity.get("wifi_signal") is not None:
-                    attrs["wifi_signal"] = system_connectivity["wifi_signal"]
-                if system_connectivity.get("online") is not None:
-                    attrs["online"] = system_connectivity["online"]
-                if system_connectivity.get("last_update"):
-            try:
-                        attrs["last_update"] = datetime.fromisoformat(system_connectivity["last_update"])
-            except (ValueError, TypeError):
-                        attrs["last_update"] = system_connectivity["last_update"]
+            attrs["wifi_signal"] = system_connectivity["wifi_signal"]
+            if system_connectivity.get("online") is not None:
+                attrs["online"] = system_connectivity["online"]
+            if system_connectivity.get("last_update"):
+                try:
+                    attrs["last_update"] = datetime.fromisoformat(system_connectivity["last_update"])
+                except (ValueError, TypeError):
+                    attrs["last_update"] = system_connectivity["last_update"]
 
         # rooms_last_update: most recent update timestamp among all zones
         if sensors:

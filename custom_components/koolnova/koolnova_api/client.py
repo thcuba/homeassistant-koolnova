@@ -22,19 +22,39 @@ class KoolnovaAPIRestClient:
     # Token expires after 1 hour (3600 seconds) - use 50 minutes to be safe
     TOKEN_LIFETIME = 3000  # 50 minutes in seconds
 
-    def __init__(self, username: str, password: str, email: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        email: Optional[str] = None,
+        request_timeout: Optional[float] = None,
+    ) -> None:
         """Initialize the API and authenticate so we can make requests.
 
         Args:
             username: string containing your Koolnova's app username
             password: string containing your Koolnova's app password
             email: optional email for the account
-            request_timeout: per-request timeout in seconds
+            request_timeout: per-request timeout in seconds; None falls back to
+                the session default (see session.REQUEST_TIMEOUT)
         """
         self.username = username
         self.password = password
         self.email = email
+        self.request_timeout = request_timeout
         self.session: Optional[KoolnovaClientSession] = None
+        self._last_auth_failure: float = 0.0
+
+    def set_request_timeout(self, timeout: Optional[float]) -> None:
+        """Update the request timeout and apply it to the live session.
+
+        Used when options change without a full reload. The change takes effect
+        immediately for rest_request calls; the next re-authentication also uses
+        the new timeout.
+        """
+        self.request_timeout = timeout
+        if self.session is not None:
+            self.session.request_timeout = timeout
 
     def _is_session_valid(self) -> bool:
         """Check if current session is valid and not expired."""
@@ -55,7 +75,11 @@ class KoolnovaAPIRestClient:
         if not self._is_session_valid():
             _LOGGER.debug("Creating new session (previous was invalid/expired)")
             try:
-                self.session = KoolnovaClientSession(self.username, self.password, self.email)
+                self.session = KoolnovaClientSession(
+                    self.username, self.password, self.email,
+                    request_timeout=self.request_timeout,
+                )
+                self._last_auth_failure = 0.0
             except Exception as e:
                 _LOGGER.error("Failed to create new session: %s", e)
                 self.session = None
