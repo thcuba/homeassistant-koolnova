@@ -145,10 +145,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return [mode.value for mode in self._get_zone_hvac_modes()]
 
     @property
-    def preset_mode(self):
-        """Return most common zone HVAC mode among all zones in this project."""
-        all_sensors = self.coordinator.data.get("sensors", [])
-        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+        def preset_mode(self):
+            """Return most common zone HVAC mode among all zones in this project."""
+            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -206,10 +205,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return current_mode
 
     @property
-    def target_temperature(self):
-        """Return median of zones' target temperatures for this project."""
-        all_sensors = self.coordinator.data.get("sensors", [])
-        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+        def target_temperature(self):
+            """Return median of zones' target temperatures for this project."""
+            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -225,10 +223,9 @@ class KoolnovaProjectEntity(ClimateEntity):
         return None
 
     @property
-    def current_temperature(self):
-        """Return average temperature of all zones in this project, rounded to nearest 0.5."""
-        all_sensors = self.coordinator.data.get("sensors", [])
-        sensors = [s for s in all_sensors if s.get("Topic_id") == self._project.get("Topic_id")]
+        def current_temperature(self):
+            """Return average temperature of all zones in this project, rounded to nearest 0.5."""
+            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
         if not sensors:
             return None
@@ -251,12 +248,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         return self._project.get("is_online", False) and self.coordinator.last_update_success
 
     @property
-    def extra_state_attributes(self):
-        """Return extra state attributes."""
-        self._update_project_data()
-        topic_id = self._project.get("Topic_id")
-        all_sensors = self.coordinator.data.get("sensors", [])
-        sensors = [s for s in all_sensors if s.get("Topic_id") == topic_id]
+        def extra_state_attributes(self):
+            """Return extra state attributes."""
+            self._update_project_data()
+            sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
         sensors_count = len(sensors)
 
         # Get system connectivity data from sensors (more up-to-date)

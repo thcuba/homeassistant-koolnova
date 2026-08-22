@@ -84,6 +84,4 @@ KOOLNOVA_TO_FAN = {
 # Inverse mapping, generated automatically, for fan speed
 FAN_TO_KOOLNOVA = {v: k for k, v in KOOLNOVA_TO_FAN.items()}
 
-# Retry constants (not configurable)
-MAX_RETRY_ATTEMPTS = 3
-RETRY_DELAY_BASE = 2
+# Fan Mode mappings
