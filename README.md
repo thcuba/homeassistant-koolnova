@@ -67,12 +67,12 @@ For developers and advanced users, see the detailed docs:
 
 | Option | Default | Range |
 |---|---|---|
-| Update interval | 60 s | 30�3600 s |
-| Project refresh frequency | every 10 cycles | 1�300 |
+| Update interval | 60 s | 30-3600 s |
+| Project refresh frequency | every 10 cycles | 1-300 |
 | Project HVAC modes | COOL, HEAT | COOL / HEAT / OFF / AUTO |
 | Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
-| Temperature range | 21�27 �C | 15�35 �C |
-| Temperature precision | 0.5 �C | 0.5 or 1 �C |
+| Temperature range | 21-27 C | 15-35 C |
+| Temperature precision | 0.5 C | 0.5 or 1 C |
 | API request timeout | 60 s | 60–300 s |
 
 ### Support
