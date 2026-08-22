@@ -56,6 +56,13 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             config_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY)
         )
 
+    def get_project_sensors(self, topic_id=None):
+        """Get sensors filtered by project topic_id. Returns all sensors if topic_id is None."""
+        all_sensors = self.data.get("sensors", [])
+        if topic_id is None:
+            return all_sensors
+        return [s for s in all_sensors if s.get("Topic_id") == topic_id]
+
     def _fetch_data_fallback(self) -> dict:
         """Fetch data using alternative 'devices' endpoint as fallback."""
         try:
@@ -174,17 +181,17 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 sensors = self.client.get_sensors()
             except Exception as e:
                             _LOGGER.warning("Primary sensors fetch failed, trying fallback: %s", e)
-                            # Fallback gives full data (projects + sensors) - extract sensors
-                            fallback_data = self._fetch_data_fallback()
-                            if fallback_data:
-                                sensors = fallback_data.get("sensors", [])
-                                # Also update projects from fallback if we have them
-                                if fallback_data.get("projects"):
-                                    self.data["projects"] = fallback_data["projects"]
-                                if fallback_data.get("hubs"):
-                                    self.data["hubs"] = fallback_data["hubs"]
-                            else:
-                                raise
+                                            # Fallback gives full data (projects + sensors) - extract sensors
+                                            fallback_data = self._fetch_data_fallback()
+                                            if fallback_data:
+                                                sensors = fallback_data.get("sensors", [])
+                                                # Also update projects from fallback if we have them
+                                                if fallback_data.get("projects"):
+                                                    self.data["projects"] = fallback_data["projects"]
+                                                if fallback_data.get("hubs"):
+                                                    self.data["hubs"] = fallback_data["hubs"]
+                                            else:
+                                                raise
 
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
             # Keep existing projects and hubs data, only update sensors
