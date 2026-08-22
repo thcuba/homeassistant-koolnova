@@ -148,14 +148,14 @@ class GetSensorsTest(ClientTestCase):
 
 
 class UpdateTest(ClientTestCase):
-    def test_updating_a_sensor_uses_put(self):
-        """The sensors endpoint takes PUT; only topics takes PATCH."""
+    def test_updating_a_sensor_uses_patch(self):
+        """The sensors endpoint takes PATCH for partial updates."""
         self._respond({"ok": True})
 
         self.client.update_sensor(7, {"setpoint_temperature": 21.5})
 
         args, kwargs = self.session.rest_request.call_args
-        self.assertEqual(args, ("PUT", "topics/sensors/7/"))
+        self.assertEqual(args, ("PATCH", "topics/sensors/7/"))
         self.assertEqual(kwargs["json"], {"setpoint_temperature": 21.5})
         self.assertEqual(kwargs["headers"]["content-type"], "application/json")
 

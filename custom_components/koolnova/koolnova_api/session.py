@@ -183,6 +183,7 @@ class KoolnovaClientSession(Session):
         except Exception as e:
             _LOGGER.error("Failed to refresh session: %s", e)
             self.bearerToken = None
+            self.token_created = 0.0
             raise RuntimeError(f"Failed to refresh session: {e}") from e
 
     def _refresh_session(self) -> None:
