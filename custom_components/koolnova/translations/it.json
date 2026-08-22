@@ -13,10 +13,10 @@
         "error": {
             "cannot_connect": "Impossibile connettersi all'API di Koolnova",
             "invalid_auth": "Email o password non validi",
-            "unknown": "Si √® verificato un errore imprevisto"
+            "unknown": "Si Ë verificato un errore imprevisto"
         },
         "abort": {
-            "already_configured": "L'account √® gi√† configurato"
+            "already_configured": "L'account Ë gi‡ configurato"
         }
     },
     "options": {
@@ -27,11 +27,12 @@
                 "data": {
                     "update_interval": "Intervallo di aggiornamento (secondi)",
                     "project_update_frequency": "Frequenza aggiornamento progetto (cicli)",
-                    "project_hvac_modes": "Modalit√† HVAC del progetto",
-                    "zone_hvac_modes": "Modalit√† HVAC delle zone",
+                    "project_hvac_modes": "Modalit‡ HVAC del progetto",
+                    "zone_hvac_modes": "Modalit‡ HVAC delle zone",
                     "min_temp": "Temperatura minima",
                     "max_temp": "Temperatura massima",
-                    "temp_precision": "Precisione temperatura"
+                    "temp_precision": "Precisione temperatura",
+                    "request_timeout": "Timeout richiesta API (secondi)"
                 }
             }
         },
@@ -45,7 +46,7 @@
                 "name": "Controllo globale",
                 "state_attributes": {
                     "preset_mode": {
-                        "name": "Modalit√† zona",
+                        "name": "Modalit‡ zona",
                         "state": {
                             "off": "Spento",
                             "auto": "Automatico"
@@ -57,7 +58,7 @@
                 "name": "Controllo Hub",
                 "state_attributes": {
                     "preset_mode": {
-                        "name": "Modalit√†",
+                        "name": "Modalit‡",
                         "state": {
                             "manual": "Manuale",
                             "auto": "Automatico",
@@ -65,11 +66,17 @@
                         }
                     }
                 }
+            },
+            "koolnova_zone": {
+                "state": {
+                    "auto": "Acceso",
+                    "off": "Spento"
+                }
             }
         },
         "binary_sensor": {
             "connectivity_status": {
-                "name": "Stato connettivit√†"
+                "name": "Stato connettivit‡"
             }
         }
     }

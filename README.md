@@ -1,32 +1,48 @@
 # Koolnova Home Assistant Integration
 
-[![HACS badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
 A custom integration for Home Assistant that lets you control Koolnova HVAC systems via the Koolnova REST API.
 
-## üë§ Credits
+Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
+
+## Credits
 
 **Original Creator:** [@luisgsluis](https://github.com/luisgsluis)  
 **Current Maintainer:** [@thcuba](https://github.com/thcuba)
 
-## üìç Full Documentation
+## Full Documentation
 
 For developers and advanced users, see the detailed docs:
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** ‚Äì Architecture and import rules
-- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** ‚Äì Common problems and solutions
-- **[DEV_ENV.md](docs/DEV_ENV.md)** ‚Äì Development environment setup
-- **[API.md](docs/API.md)** ‚Äì Koolnova API reference
-- **[RELEASE.md](docs/RELEASE.md)** ‚Äì Release history and process
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** ó Architecture and import rules
+- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** ó Common problems and solutions
+- **[DEV_ENV.md](docs/DEV_ENV.md)** ó Development environment setup
+- **[API.md](docs/API.md)** ó Koolnova API reference
+- **[RELEASE.md](docs/RELEASE.md)** ó Release history and process
 
 ### Features
 
-- üå°Ô∏è Per-zone temperature control
-- ‚ùÑÔ∏è HVAC mode control (COOL / HEAT / AUTO / OFF)
-- üå¨Ô∏è Fan-speed control
-- üè† Global project control
-- üîî Smart polling (sensor updates every minute, cached projects)
-- üìçÔ∏è Advanced UI configuration
+- ?? HVAC modes per zone and globally (COOL / HEAT / AUTO / OFF)
+- ??? Per-zone temperature control
+- ??? Fan-speed control (LOW / MEDIUM / HIGH / AUTO)
+- ?? Global project control
+- ?? Hub control on legacy accounts (ON/OFF + behavior mode)
+- ?? Connectivity binary sensor per project (online/offline)
+- ?? Per-zone on/off switch
+- ?? Smart polling (sensor updates every minute, cached projects)
+- ??? Advanced UI configuration
+- ?? Translations: English, Spanish, Italian
+
+### Entities
+
+| Entity | Domain | Purpose |
+|---|---|---|
+| `climate.koolnova_*` (project) | climate | Global control: target temperature (median of zones), project HVAC mode, ECO/stop attributes |
+| `climate.koolnova_*` (zone) | climate | One per room: temperature, setpoint, HVAC mode, fan speed |
+| `climate.koolnova_hub_*` | climate | Legacy hub, one per hub: ON/OFF + manual / auto / planning |
+| `switch.koolnova_<room>_power` | switch | One per room: power on/off toggle |
+| `binary_sensor.koolnova_connectivity_status` | binary_sensor | Online/offline per project, ready for automations |
 
 ### Installation
 
@@ -42,20 +58,30 @@ For developers and advanced users, see the detailed docs:
 
 ### Configuration
 
-1. Open **Configuration ‚Üí Devices & Services ‚Üí Add Integration**.
+1. Open **Configuration ? Devices & Services ? Add Integration**.
 2. Search for "Koolnova".
 3. Enter your Koolnova app credentials.
 4. (Optional) Adjust advanced options.
 
 #### Available Options
 
-- **Update interval** ‚Äì 60 ‚Äì 3600 seconds
-- **Project-level HVAC modes** ‚Äì select available modes
-- **Zone-level HVAC modes** ‚Äì select per-zone modes
-- **Temperature range** ‚Äì configurable min / max values
+| Option | Default | Range |
+|---|---|---|
+| Update interval | 60 s | 30ñ3600 s |
+| Project refresh frequency | every 10 cycles | 1ñ300 |
+| Project HVAC modes | COOL, HEAT | COOL / HEAT / OFF / AUTO |
+| Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
+| Temperature range | 21ñ27 ∞C | 15ñ35 ∞C |
+| Temperature precision | 0.5 ∞C | 0.5 or 1 ∞C |
+| API request timeout | 45 s | 5ñ300 s |
 
 ### Support
 
 - **Issues**: [GitHub Issues](https://github.com/thcuba/homeassistant-koolnova/issues)
 - **Documentation**: the `docs/` folder
 - **License**: MIT
+
+### Disclaimer
+
+Unofficial project, not affiliated with Koolnova. It relies on an undocumented API that the
+manufacturer may change or shut down at any time.

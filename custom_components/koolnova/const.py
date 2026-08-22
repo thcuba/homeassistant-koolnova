@@ -10,13 +10,23 @@ from homeassistant.components.climate import (
 )
 
 DOMAIN = "koolnova"
-PLATFORMS = ["climate", "binary_sensor"]
+PLATFORMS = ["climate", "binary_sensor", "switch"]
 
-# CONFIGURABLES: Default values and limits
+# CONFIGURABLE: defaults and limits.
+# IMPORTANT: Koolnova bans IPs automatically when the API is polled more than
+# once every 30 seconds (confirmed by their support, see issue #4).
 DEFAULT_UPDATE_INTERVAL = 60  # seconds
-DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # frequency for project updates in cycles
-MIN_PROJECT_UPDATE_FREQUENCY = 1      # minimum configurable (always update)
-MAX_PROJECT_UPDATE_FREQUENCY = 300    # maximum configurable
+MIN_UPDATE_INTERVAL = 30      # configurable minimum (limit imposed by Koolnova)
+MAX_UPDATE_INTERVAL = 3600    # configurable maximum
+DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # refresh projects every N updates
+MIN_PROJECT_UPDATE_FREQUENCY = 1      # configurable minimum (always refresh)
+MAX_PROJECT_UPDATE_FREQUENCY = 300    # configurable maximum
+
+# Per-request HTTP timeout for Koolnova API calls (seconds).
+# 45s is the value recommended by Koolnova support (see docs/API.md).
+DEFAULT_REQUEST_TIMEOUT = 45   # seconds
+MIN_REQUEST_TIMEOUT = 5        # configurable minimum
+MAX_REQUEST_TIMEOUT = 300      # configurable maximum
 
 DEFAULT_PROJECT_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT]
 DEFAULT_ZONE_HVAC_MODES = [HVACMode.OFF, HVACMode.AUTO]
@@ -39,8 +49,9 @@ CONF_ZONE_HVAC_MODES = "zone_hvac_modes"
 CONF_MIN_TEMP = "min_temp"
 CONF_MAX_TEMP = "max_temp"
 CONF_TEMP_PRECISION = "temp_precision"
+CONF_REQUEST_TIMEOUT = "request_timeout"
 
-# HVAC Mode mappings for projects
+# HVAC mode mappings for projects - only the forward definition is written by hand
 KOOLNOVA_TO_HVAC_MODE = {
     "1": HVACMode.COOL,
     "2": HVACMode.OFF,
@@ -48,10 +59,10 @@ KOOLNOVA_TO_HVAC_MODE = {
     "6": HVACMode.AUTO
 }
 
-# Generate inverse mapping for project HVAC
+# Inverse mapping, generated automatically, for project HVAC
 HVAC_TO_KOOLNOVA_MODE = {v: k for k, v in KOOLNOVA_TO_HVAC_MODE.items()}
 
-# Status mappings for sensors/zones
+# Status mappings for sensors/zones - only the forward definition is written by hand
 KOOLNOVA_ZONE_STATUS_TO_HVAC = {
     "00": HVACMode.COOL,
     "01": HVACMode.HEAT,
@@ -59,10 +70,10 @@ KOOLNOVA_ZONE_STATUS_TO_HVAC = {
     "03": HVACMode.AUTO
 }
 
-# Generate inverse mapping for zone status
+# Inverse mapping, generated automatically, for zone status
 HVAC_TO_KOOLNOVA_ZONE_STATUS = {v: k for k, v in KOOLNOVA_ZONE_STATUS_TO_HVAC.items()}
 
-# Fan Mode mappings
+# Fan mode mappings - only the forward definition is written by hand
 KOOLNOVA_TO_FAN = {
     "1": FAN_LOW,
     "2": FAN_MEDIUM,
@@ -70,9 +81,9 @@ KOOLNOVA_TO_FAN = {
     "4": FAN_AUTO
 }
 
-# Generate inverse mapping for fan speed
+# Inverse mapping, generated automatically, for fan speed
 FAN_TO_KOOLNOVA = {v: k for k, v in KOOLNOVA_TO_FAN.items()}
 
-# Retry constants
+# Retry constants (not configurable)
 MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY_BASE = 2

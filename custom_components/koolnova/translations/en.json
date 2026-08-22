@@ -31,7 +31,8 @@
                     "zone_hvac_modes": "Zone HVAC Modes",
                     "min_temp": "Minimum Temperature",
                     "max_temp": "Maximum Temperature",
-                    "temp_precision": "Temperature Precision"
+                    "temp_precision": "Temperature Precision",
+                    "request_timeout": "API Request Timeout (seconds)"
                 }
             }
         },
@@ -64,6 +65,12 @@
                             "planning": "Planning"
                         }
                     }
+                }
+            },
+            "koolnova_zone": {
+                "state": {
+                    "auto": "On",
+                    "off": "Off"
                 }
             }
         },

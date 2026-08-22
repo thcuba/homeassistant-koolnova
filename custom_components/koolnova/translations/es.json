@@ -5,38 +5,39 @@
                 "title": "Configurar Koolnova",
                 "description": "Introduce las credenciales de tu cuenta Koolnova",
                 "data": {
-                    "email": "Correo Electr√≥nico",
-                    "password": "Contrase√±a"
+                    "email": "Correo ElectrÛnico",
+                    "password": "ContraseÒa"
                 }
             }
         },
         "error": {
             "cannot_connect": "Error al conectar con la API de Koolnova",
-            "invalid_auth": "Email o contrase√±a incorrectos",
+            "invalid_auth": "Email o contraseÒa incorrectos",
             "unknown": "Error inesperado"
         },
         "abort": {
-            "already_configured": "La cuenta ya est√° configurada"
+            "already_configured": "La cuenta ya est· configurada"
         }
     },
     "options": {
         "step": {
             "user": {
                 "title": "Configurar Opciones de Koolnova",
-                "description": "Personaliza el comportamiento y l√≠mites de la integraci√≥n",
+                "description": "Personaliza el comportamiento y lÌmites de la integraciÛn",
                 "data": {
-                    "update_interval": "Intervalo de Actualizaci√≥n (segundos)",
-                    "project_update_frequency": "Frecuencia de Actualizaci√≥n de Proyectos (ciclos)",
+                    "update_interval": "Intervalo de ActualizaciÛn (segundos)",
+                    "project_update_frequency": "Frecuencia de ActualizaciÛn de Proyectos (ciclos)",
                     "project_hvac_modes": "Modos HVAC del Proyecto",
                     "zone_hvac_modes": "Modos HVAC de las Zonas",
-                    "min_temp": "Temperatura M√≠nima",
-                    "max_temp": "Temperatura M√°xima",
-                    "temp_precision": "Precisi√≥n de Temperatura"
+                    "min_temp": "Temperatura MÌnima",
+                    "max_temp": "Temperatura M·xima",
+                    "temp_precision": "PrecisiÛn de Temperatura",
+                    "request_timeout": "Timeout de PeticiÛn a la API (segundos)"
                 }
             }
         },
         "error": {
-            "temp_range_invalid": "La temperatura m√≠nima debe ser menor que la m√°xima"
+            "temp_range_invalid": "La temperatura mÌnima debe ser menor que la m·xima"
         }
     },
     "entity": {
@@ -60,10 +61,16 @@
                         "name": "Modo",
                         "state": {
                             "manual": "Manual",
-                            "auto": "Autom√°tico",
-                            "planning": "Programaci√≥n"
+                            "auto": "Autom·tico",
+                            "planning": "ProgramaciÛn"
                         }
                     }
+                }
+            },
+            "koolnova_zone": {
+                "state": {
+                    "auto": "Encendido",
+                    "off": "Apagado"
                 }
             }
         },

@@ -28,7 +28,8 @@ class KoolnovaAPIRestClient:
         Args:
             username: string containing your Koolnova's app username
             password: string containing your Koolnova's app password
-            email: optional email associated to the account (API accepts username, email, password)
+            email: optional email for the account
+            request_timeout: per-request timeout in seconds
         """
         self.username = username
         self.password = password
