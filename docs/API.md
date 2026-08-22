@@ -17,7 +17,7 @@ Base: `https://api.koolnova.com` (Django REST framework).
 2. **Trailing slash on every path.** `projects/` yes, `projects` no.
 3. **At most one request every 30 s.** Koolnova bans your IP automatically above that rate, and
    also on repeated failed logins.
-4. **45 s request timeout.** Koolnova support recommends a 45 s per-request timeout (the integration
+4. **60 s minimum request timeout.** Cloud requests never go below 60 s (the integration
    default, configurable via `request_timeout` in the options flow). A hung request without a
    timeout would otherwise block a polling cycle forever.
 
@@ -89,7 +89,7 @@ provides the topic `id` and the connectivity data: RSSI, online, sync).
 
 ### `PUT /topics/sensors/{sensor_id}/`
 
-Updates one zone. **It is `PUT`, not `PATCH`** — unlike the topics endpoint.
+Updates one zone. **It is `PUT`, not `PATCH`** ï¿½ unlike the topics endpoint.
 
 | Payload | Effect |
 |---|---|
@@ -111,7 +111,7 @@ Updates the whole project.
 ## Hub / legacy controller endpoints
 
 Legacy Koolnova controllers (a physical hub instead of per-zone devices) expose a few extra
-endpoints. These were contributed from a community fork and are covered by mocked unit tests only —
+endpoints. These were contributed from a community fork and are covered by mocked unit tests only ï¿½
 **not verified against the live API**; if your account has no hub, `/modules/` answers nothing
 usable and the integration simply creates no hub entities.
 
@@ -155,7 +155,7 @@ Lists notifications. Currently not consumed by the integration; exposed for tool
 ## Code tables
 
 Defined in `custom_components/koolnova/const.py`. **Project modes and zone modes use different
-encodings** — an easy mistake to make.
+encodings** ï¿½ an easy mistake to make.
 
 ### Project mode (`mode`)
 
@@ -189,6 +189,6 @@ encodings** — an easy mistake to make.
 | Code | Usual cause |
 |---|---|
 | `400` | Malformed payload, value out of range, or `username` instead of `email` on login |
-| `404` | **Almost always missing browser-like headers** — not a missing route. Also a path without a trailing slash, or a non-existent ID |
+| `404` | **Almost always missing browser-like headers** ï¿½ not a missing route. Also a path without a trailing slash, or a non-existent ID |
 | `429` | Rate limited; the client retries with backoff |
 | `5xx` | API down; the client retries with a short backoff |
