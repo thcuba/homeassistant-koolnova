@@ -23,9 +23,9 @@ MIN_PROJECT_UPDATE_FREQUENCY = 1      # configurable minimum (always refresh)
 MAX_PROJECT_UPDATE_FREQUENCY = 300    # configurable maximum
 
 # Per-request HTTP timeout for Koolnova API calls (seconds).
-# 60s ensures cloud requests never time out too aggressively.
-DEFAULT_REQUEST_TIMEOUT = 60   # seconds
-MIN_REQUEST_TIMEOUT = 60       # configurable minimum — never below 60s for cloud
+# 50s is the minimum recommended by Koolnova support; never go below it.
+DEFAULT_REQUEST_TIMEOUT = 50   # seconds
+MIN_REQUEST_TIMEOUT = 50       # configurable minimum — never below 50s for cloud
 MAX_REQUEST_TIMEOUT = 300      # configurable maximum
 
 DEFAULT_PROJECT_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT]

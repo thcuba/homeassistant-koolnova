@@ -13,9 +13,7 @@ from requests.exceptions import ConnectionError
 from requests.exceptions import Timeout
 from requests.exceptions import HTTPError
 
-#logging.basicConfig(level=logging.DEBUG)
-
-from .const import KOOLNOVA_API_URL, KOOLNOVA_AUTH_URL, USER_AGENT, COMMON_HEADERS, FULL_USER_AGENT
+from .const import KOOLNOVA_API_URL, KOOLNOVA_AUTH_URL, COMMON_HEADERS, FULL_USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,8 +23,10 @@ DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds
 DEFAULT_RETRY_MAX_BACKOFF = 30.0  # max delay in seconds
 
 # Per-request timeout. Without one, a hung request blocks a polling cycle forever.
-# 60s ensures cloud requests never time out too aggressively.
-REQUEST_TIMEOUT = 60
+# 50s is the minimum recommended by Kool support; never go below it.
+REQUEST_TIMEOUT = 50
+# Hard floor: requests to the Koolnova servers never time out below this value.
+MIN_REQUEST_TIMEOUT = 50
 
 # Session keepalive: refresh token if last request was longer ago than this
 SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
@@ -66,8 +66,7 @@ class KoolnovaClientSession(Session):
         self.email = email
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
-        self.request_timeout = request_timeout
-        self._last_request_time = time.time()
+        self.request_timeout = request_timeout if request_timeout is not None else REQUEST_TIMEOUT
 
         _LOGGER.debug("Starting authentication for username '%s' (email: %s)", username, email)
 
@@ -95,7 +94,8 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(auth_max_attempts):
             try:
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=self.request_timeout)
+                auth_timeout = max(float(self.request_timeout), MIN_REQUEST_TIMEOUT)
+                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=auth_timeout)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, auth_max_attempts, e)
                 response = None
@@ -164,7 +164,6 @@ class KoolnovaClientSession(Session):
             raise RuntimeError(f"Authentication response did not contain a token: {data}")
 
         self.bearerToken = str(token)
-        self.bearer_token = self.bearerToken  # Alias snake_case
         self.token_created = time.time()  # Track when token was created
         self.last_request_time = time.time()  # Track last API call time
         _LOGGER.debug("BearerToken of authentication : %s", self.bearerToken)
@@ -235,7 +234,13 @@ class KoolnovaClientSession(Session):
         token = self.bearerToken if isinstance(self.bearerToken, str) else ""
 
         # Without an explicit timeout a hung request blocks the polling cycle.
-        kwargs.setdefault("timeout", self.request_timeout)
+        # Enforce a hard floor so requests to the Koolnova servers never time
+        # out below MIN_REQUEST_TIMEOUT, regardless of what was configured.
+        timeout = kwargs.get("timeout")
+        if timeout is None:
+            timeout = self.request_timeout
+        timeout = max(float(timeout), MIN_REQUEST_TIMEOUT)
+        kwargs["timeout"] = timeout
 
         headers_auth = {
             "Authorization": "Bearer " + token,
@@ -269,7 +274,7 @@ class KoolnovaClientSession(Session):
                 # Handle 429: rate limited
                 if response.status_code == 429:
                     retry_after = response.headers.get('Retry-After')
-                    delay = float(retry_after) if retry_after else min(backoff * (2 ** attempt), 30.0)
+                    delay = float(retry_after) if retry_after else min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_BACKOFF)
                     if attempt < retries:
                         _LOGGER.warning("Rate limited (429), retrying in %.1f seconds", delay)
                         time.sleep(delay)
@@ -279,7 +284,7 @@ class KoolnovaClientSession(Session):
 
                 # Handle 5xx: server errors
                 if response.status_code >= 500 and attempt < retries:
-                    delay = min(backoff * (2 ** attempt), 30.0)
+                    delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_BACKOFF)
                     _LOGGER.warning("Server error %d on attempt %d/%d, retrying in %.1f seconds",
                                   response.status_code, attempt + 1, retries + 1, delay)
                     time.sleep(delay)
@@ -290,7 +295,7 @@ class KoolnovaClientSession(Session):
 
             except (ConnectionError, Timeout) as e:
                 if attempt < retries:
-                    delay = min(backoff * (2 ** attempt), 30.0)
+                    delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_BACKOFF)
                     _LOGGER.warning("Connection error on attempt %d/%d: %s, retrying in %.1f seconds",
                                   attempt + 1, retries + 1, e, delay)
                     time.sleep(delay)
@@ -302,7 +307,7 @@ class KoolnovaClientSession(Session):
             except HTTPError as e:
                 # If raise_for_status hasn't been called yet (5xx already handled above)
                 if response is not None and response.status_code >= 500 and attempt < retries:
-                    delay = min(backoff * (2 ** attempt), 30.0)
+                    delay = min(backoff * (2 ** attempt), DEFAULT_RETRY_MAX_BACKOFF)
                     _LOGGER.warning("HTTP error %d on attempt %d/%d, retrying in %.1f seconds",
                                   response.status_code, attempt + 1, retries + 1, delay)
                     time.sleep(delay)
