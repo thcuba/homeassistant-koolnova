@@ -8,6 +8,5 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/thcuba/homeassistant-koolnova/issues",
-  "requirements": ["requests"],
   "version": "2.0.3"
 }
