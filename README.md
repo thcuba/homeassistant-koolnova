@@ -73,7 +73,7 @@ For developers and advanced users, see the detailed docs:
 | Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
 | Temperature range | 21-27 C | 15-35 C |
 | Temperature precision | 0.5 C | 0.5 or 1 C |
-| API request timeout | 50 s | 50–300 s |
+| API request timeout | 60 s | 50–300 s |
 
 ### Support
 
