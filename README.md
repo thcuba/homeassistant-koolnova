@@ -23,15 +23,15 @@ For developers and advanced users, see the detailed docs:
 
 ### Features
 
-- ?? HVAC modes per zone and globally (COOL / HEAT / AUTO / OFF)
-- ??? Per-zone temperature control
-- ??? Fan-speed control (LOW / MEDIUM / HIGH / AUTO)
-- ?? Global project control
-- ?? Hub control on legacy accounts (ON/OFF + behavior mode)
-- ?? Connectivity binary sensor per project (online/offline)
-- ?? Per-zone on/off switch
-- ?? Smart polling (sensor updates every minute, cached projects)
-- ??? Advanced UI configuration
+- HVAC modes per zone and globally (COOL / HEAT / AUTO / OFF)
+- Per-zone temperature control
+- Fan-speed control (LOW / MEDIUM / HIGH / AUTO)
+- Global project control
+- Hub control on legacy accounts (ON/OFF + behavior mode)
+- Connectivity binary sensor per project (online/offline)
+- Per-zone on/off switch
+- Smart polling (sensor updates every minute, cached projects)
+- Advanced UI configuration
 - ?? Translations: English, Spanish, Italian
 
 ### Entities
