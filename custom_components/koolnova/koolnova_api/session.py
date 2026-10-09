@@ -166,7 +166,7 @@ class KoolnovaClientSession(Session):
         self.bearerToken = str(token)
         self.token_created = time.time()  # Track when token was created
         self.last_request_time = time.time()  # Track last API call time
-        _LOGGER.debug("BearerToken of authentication : %s", self.bearerToken)
+        _LOGGER.debug("BearerToken of authentication : %s", "***")
 
     def refresh_token(self) -> None:
         """Re-authenticate and replace the bearer token.
