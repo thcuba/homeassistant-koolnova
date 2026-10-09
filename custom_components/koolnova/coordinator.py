@@ -6,7 +6,6 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .koolnova_api.client import KoolnovaAPIRestClient
 from .koolnova_api.exceptions import KoolnovaError
