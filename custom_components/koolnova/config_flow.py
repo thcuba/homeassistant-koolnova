@@ -1,5 +1,4 @@
 """Config flow for Koolnova integration."""
-import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -9,7 +8,6 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
-from homeassistant.components.climate import HVACMode
 
 from .koolnova_api.client import KoolnovaAPIRestClient
 from .koolnova_api.exceptions import KoolnovaError
