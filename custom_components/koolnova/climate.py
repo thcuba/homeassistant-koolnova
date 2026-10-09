@@ -64,7 +64,32 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities(entities, update_before_add=False)
 
-class KoolnovaProjectEntity(ClimateEntity):
+
+class KoolnovaConfigMixin:
+    """Mixin for shared configuration methods across Koolnova entities."""
+
+    def _get_config_value(self, key, default):
+        """Get configuration value from options or data."""
+        return self.config_entry.options.get(key, self.config_entry.data.get(key, default))
+
+    def _get_zone_hvac_modes(self):
+        """Get configured zone HVAC modes."""
+        mode_values = self._get_config_value(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES])
+        return [HVACMode(value) for value in mode_values]
+
+    def _get_min_temp(self):
+        """Get configured minimum temperature."""
+        return self._get_config_value(CONF_MIN_TEMP, DEFAULT_MIN_TEMP)
+
+    def _get_max_temp(self):
+        """Get configured maximum temperature."""
+        return self._get_config_value(CONF_MAX_TEMP, DEFAULT_MAX_TEMP)
+
+    def _get_temp_precision(self):
+        """Get configured temperature precision."""
+        return self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
+
+class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
     """Project entity with global control: temperature, project HVAC mode, zone fan speed, and zone HVAC mode."""
 
     _attr_has_entity_name = True
@@ -97,31 +122,10 @@ class KoolnovaProjectEntity(ClimateEntity):
         self._global_fan_mode = FAN_AUTO
         self._global_zone_hvac_mode = HVACMode.AUTO
 
-    def _get_config_value(self, key, default):
-        """Get configuration value from options or data."""
-        return self.config_entry.options.get(key, self.config_entry.data.get(key, default))
-
     def _get_project_hvac_modes(self):
         """Get configured project HVAC modes."""
         mode_values = self._get_config_value(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES])
         return [HVACMode(value) for value in mode_values]
-
-    def _get_zone_hvac_modes(self):
-        """Get configured zone HVAC modes."""
-        mode_values = self._get_config_value(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES])
-        return [HVACMode(value) for value in mode_values]
-
-    def _get_min_temp(self):
-        """Get configured minimum temperature."""
-        return self._get_config_value(CONF_MIN_TEMP, DEFAULT_MIN_TEMP)
-
-    def _get_max_temp(self):
-        """Get configured maximum temperature."""
-        return self._get_config_value(CONF_MAX_TEMP, DEFAULT_MAX_TEMP)
-
-    def _get_temp_precision(self):
-        """Get configured temperature precision."""
-        return self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
 
     @property
     def hvac_modes(self):
@@ -457,7 +461,7 @@ class KoolnovaProjectEntity(ClimateEntity):
             _LOGGER.error("Error setting global temperature: %s", err)
             async_create(self.hass, f"Error setting global temperature: {err}", title="Koolnova Global Temperature")
 
-class KoolnovaZoneEntity(ClimateEntity):
+class KoolnovaZoneEntity(KoolnovaConfigMixin, ClimateEntity):
     """Individual room zone as a climate device."""
 
     _attr_has_entity_name = True
@@ -491,27 +495,6 @@ class KoolnovaZoneEntity(ClimateEntity):
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
-
-    def _get_config_value(self, key, default):
-        """Get configuration value from options or data."""
-        return self.config_entry.options.get(key, self.config_entry.data.get(key, default))
-
-    def _get_zone_hvac_modes(self):
-        """Get configured zone HVAC modes."""
-        mode_values = self._get_config_value(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES])
-        return [HVACMode(value) for value in mode_values]
-        
-    def _get_min_temp(self):
-        """Get configured minimum temperature."""
-        return self._get_config_value(CONF_MIN_TEMP, DEFAULT_MIN_TEMP)
-
-    def _get_max_temp(self):
-        """Get configured maximum temperature."""
-        return self._get_config_value(CONF_MAX_TEMP, DEFAULT_MAX_TEMP)
-
-    def _get_temp_precision(self):
-        """Get configured temperature precision."""
-        return self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
 
     @property
     def hvac_modes(self):
