@@ -1,5 +1,6 @@
 """DataUpdateCoordinator for Koolnova."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -457,18 +458,30 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             updated_count = 0
             failed_count = 0
             
+            tasks = []
+            sensors_in_tasks = []
+
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"setpoint_temperature": temperature})
-                        updated_count += 1
-                        _LOGGER.debug("Updated temperature for sensor %s (%s) to %s degrees", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), temperature)
-                    except Exception as err:
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"setpoint_temperature": temperature}))
+                    sensors_in_tasks.append(sensor)
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for sensor, result in zip(sensors_in_tasks, results):
+                    sensor_id = sensor.get("Room_id")
+                    room_name = sensor.get("Room_Name", "Unknown")
+
+                    if isinstance(result, Exception):
                         failed_count += 1
                         _LOGGER.error("Failed to update temperature for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
+                                    sensor_id, room_name, result)
+                    else:
+                        updated_count += 1
+                        _LOGGER.debug("Updated temperature for sensor %s (%s) to %s degrees",
+                                    sensor_id, room_name, temperature)
             
             _LOGGER.info("Temperature update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
@@ -490,18 +503,30 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             updated_count = 0
             failed_count = 0
             
+            tasks = []
+            sensors_in_tasks = []
+
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"status": status_code})
-                        updated_count += 1
-                        _LOGGER.debug("Updated status for sensor %s (%s) to %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), status_code)
-                    except Exception as err:
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"status": status_code}))
+                    sensors_in_tasks.append(sensor)
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for sensor, result in zip(sensors_in_tasks, results):
+                    sensor_id = sensor.get("Room_id")
+                    room_name = sensor.get("Room_Name", "Unknown")
+
+                    if isinstance(result, Exception):
                         failed_count += 1
                         _LOGGER.error("Failed to update status for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
+                                    sensor_id, room_name, result)
+                    else:
+                        updated_count += 1
+                        _LOGGER.debug("Updated status for sensor %s (%s) to %s",
+                                    sensor_id, room_name, status_code)
             
             _LOGGER.info("Status update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
@@ -523,18 +548,30 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             updated_count = 0
             failed_count = 0
             
+            tasks = []
+            sensors_in_tasks = []
+
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"speed": speed_code})
-                        updated_count += 1
-                        _LOGGER.debug("Updated fan speed for sensor %s (%s) to %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), speed_code)
-                    except Exception as err:
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"speed": speed_code}))
+                    sensors_in_tasks.append(sensor)
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for sensor, result in zip(sensors_in_tasks, results):
+                    sensor_id = sensor.get("Room_id")
+                    room_name = sensor.get("Room_Name", "Unknown")
+
+                    if isinstance(result, Exception):
                         failed_count += 1
                         _LOGGER.error("Failed to update fan speed for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
+                                    sensor_id, room_name, result)
+                    else:
+                        updated_count += 1
+                        _LOGGER.debug("Updated fan speed for sensor %s (%s) to %s",
+                                    sensor_id, room_name, speed_code)
             
             _LOGGER.info("Fan speed update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
