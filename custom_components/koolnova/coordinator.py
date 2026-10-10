@@ -1,5 +1,6 @@
 """DataUpdateCoordinator for Koolnova."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -456,19 +457,28 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
             updated_count = 0
             failed_count = 0
+            tasks = []
+            sensor_map = {}
             
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"setpoint_temperature": temperature})
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"setpoint_temperature": temperature}))
+                    sensor_map[len(tasks)-1] = sensor
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for i, result in enumerate(results):
+                    sensor = sensor_map[i]
+                    sensor_id = sensor.get("Room_id")
+                    if isinstance(result, Exception):
+                        failed_count += 1
+                        _LOGGER.error("Failed to update temperature for sensor %s (%s): %s",
+                                    sensor_id, sensor.get("Room_Name", "Unknown"), result)
+                    else:
                         updated_count += 1
                         _LOGGER.debug("Updated temperature for sensor %s (%s) to %s degrees", 
                                     sensor_id, sensor.get("Room_Name", "Unknown"), temperature)
-                    except Exception as err:
-                        failed_count += 1
-                        _LOGGER.error("Failed to update temperature for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
             
             _LOGGER.info("Temperature update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
@@ -489,19 +499,28 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
             updated_count = 0
             failed_count = 0
+            tasks = []
+            sensor_map = {}
             
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"status": status_code})
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"status": status_code}))
+                    sensor_map[len(tasks)-1] = sensor
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for i, result in enumerate(results):
+                    sensor = sensor_map[i]
+                    sensor_id = sensor.get("Room_id")
+                    if isinstance(result, Exception):
+                        failed_count += 1
+                        _LOGGER.error("Failed to update status for sensor %s (%s): %s",
+                                    sensor_id, sensor.get("Room_Name", "Unknown"), result)
+                    else:
                         updated_count += 1
                         _LOGGER.debug("Updated status for sensor %s (%s) to %s", 
                                     sensor_id, sensor.get("Room_Name", "Unknown"), status_code)
-                    except Exception as err:
-                        failed_count += 1
-                        _LOGGER.error("Failed to update status for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
             
             _LOGGER.info("Status update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
@@ -522,19 +541,28 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
             updated_count = 0
             failed_count = 0
+            tasks = []
+            sensor_map = {}
             
             for sensor in sensors_to_update:
                 sensor_id = sensor.get("Room_id")
                 if sensor_id is not None:
-                    try:
-                        await self.async_update_sensor_data(sensor_id, {"speed": speed_code})
+                    tasks.append(self.async_update_sensor_data(sensor_id, {"speed": speed_code}))
+                    sensor_map[len(tasks)-1] = sensor
+
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for i, result in enumerate(results):
+                    sensor = sensor_map[i]
+                    sensor_id = sensor.get("Room_id")
+                    if isinstance(result, Exception):
+                        failed_count += 1
+                        _LOGGER.error("Failed to update fan speed for sensor %s (%s): %s",
+                                    sensor_id, sensor.get("Room_Name", "Unknown"), result)
+                    else:
                         updated_count += 1
                         _LOGGER.debug("Updated fan speed for sensor %s (%s) to %s", 
                                     sensor_id, sensor.get("Room_Name", "Unknown"), speed_code)
-                    except Exception as err:
-                        failed_count += 1
-                        _LOGGER.error("Failed to update fan speed for sensor %s (%s): %s", 
-                                    sensor_id, sensor.get("Room_Name", "Unknown"), err)
             
             _LOGGER.info("Fan speed update completed for project %s: %d successful, %d failed",
                         topic_id if topic_id is not None else "all", updated_count, failed_count)
