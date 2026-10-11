@@ -1,6 +1,7 @@
 """DataUpdateCoordinator for Koolnova."""
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -63,6 +64,40 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             return all_sensors
         return [s for s in all_sensors if s.get("Topic_id") == topic_id]
 
+    def _fetch_hubs(self) -> list:
+        """Fetch all hub states concurrently to prevent N+1 query overhead."""
+        hubs = []
+        try:
+            module_ids = self.client.search_all_ids()
+            hub_ids = module_ids.get("hub", [])
+            if not hub_ids:
+                return hubs
+
+            def _get_single_hub_state(hub_id):
+                try:
+                    hub_state = self.client.get_hub_state(hub_id)
+                    return {
+                        "Hub_id": hub_id,
+                        "State": hub_state.get("state"),
+                        "Mode": hub_state.get("mode"),
+                    }
+                except Exception as e:
+                    _LOGGER.warning("Could not fetch state for hub %s: %s", hub_id, e)
+                    return None
+
+            max_workers = min(10, len(hub_ids))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_get_single_hub_state, hub_id) for hub_id in hub_ids]
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result is not None:
+                        hubs.append(result)
+
+        except Exception as e:
+            _LOGGER.warning("Could not discover hubs: %s", e)
+
+        return hubs
+
     def _fetch_data_fallback(self) -> dict:
         """Fetch data using alternative 'devices' endpoint as fallback."""
         try:
@@ -109,21 +144,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                         "last_sync": topic_info.get("last_sync"),
                     }
 
-            hubs = []
-            try:
-                module_ids = self.client.search_all_ids()
-                for hub_id in module_ids.get("hub", []):
-                    try:
-                        hub_state = self.client.get_hub_state(hub_id)
-                        hubs.append({
-                            "Hub_id": hub_id,
-                            "State": hub_state.get("state"),
-                            "Mode": hub_state.get("mode")
-                        })
-                    except Exception as e:
-                        _LOGGER.warning("Could not fetch state for hub %s: %s", hub_id, e)
-            except Exception as e:
-                _LOGGER.warning("Could not discover hubs: %s", e)
+            hubs = self._fetch_hubs()
 
             return {
                 "projects": list(projects_dict.values()),
@@ -143,18 +164,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
                 sensors = self.client.get_sensors()
 
                 # Also try to discover hubs even in primary mode if requested
-                hubs = []
-                try:
-                    module_ids = self.client.search_all_ids()
-                    for hub_id in module_ids.get("hub", []):
-                        hub_state = self.client.get_hub_state(hub_id)
-                        hubs.append({
-                            "Hub_id": hub_id,
-                            "State": hub_state.get("state"),
-                            "Mode": hub_state.get("mode")
-                        })
-                except:
-                    pass
+                hubs = self._fetch_hubs()
 
                 _LOGGER.debug("Successfully fetched %d projects, %d sensors and %d hubs",
                              len(projects), len(sensors), len(hubs))
