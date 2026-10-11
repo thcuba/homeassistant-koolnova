@@ -137,3 +137,70 @@ class TestKoolnovaCoordinatorStatus(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestKoolnovaCoordinatorHubs(unittest.TestCase):
+    """Test suite for KoolnovaDataUpdateCoordinator._fetch_hubs."""
+
+    def setUp(self):
+        """Set up mock HomeAssistant and ConfigEntry for coordinator testing."""
+        self.hass = MagicMock()
+        self.config_entry = MagicMock()
+        self.config_entry.data = {
+            "email": "test@example.com",
+            "password": "secretpassword",
+            "update_interval": 60,
+            "project_update_frequency": 10,
+        }
+        self.config_entry.options = {}
+        self.config_entry.entry_id = "test_entry_id"
+
+        with patch("custom_components.koolnova.coordinator.KoolnovaAPIRestClient"):
+            self.coordinator = KoolnovaDataUpdateCoordinator(
+                self.hass, self.config_entry
+            )
+
+    def test_fetch_hubs_success(self):
+        """Test fetching hubs concurrently when all requests succeed."""
+        self.coordinator.client.search_all_ids = MagicMock(
+            return_value={"koolnova": [], "hub": ["HB1", "HB2"]}
+        )
+
+        def mock_get_hub_state(hub_id):
+            return {"state": True, "mode": "auto" if hub_id == "HB1" else "manual"}
+
+        self.coordinator.client.get_hub_state = MagicMock(side_effect=mock_get_hub_state)
+
+        hubs = self.coordinator._fetch_hubs()
+
+        self.assertEqual(len(hubs), 2)
+        hub_ids = {h["Hub_id"] for h in hubs}
+        self.assertEqual(hub_ids, {"HB1", "HB2"})
+
+    def test_fetch_hubs_partial_failure(self):
+        """Test fetching hubs when one hub request fails with an exception."""
+        self.coordinator.client.search_all_ids = MagicMock(
+            return_value={"koolnova": [], "hub": ["HB1", "HB2_FAIL"]}
+        )
+
+        def mock_get_hub_state(hub_id):
+            if hub_id == "HB2_FAIL":
+                raise Exception("Network error")
+            return {"state": True, "mode": "auto"}
+
+        self.coordinator.client.get_hub_state = MagicMock(side_effect=mock_get_hub_state)
+
+        hubs = self.coordinator._fetch_hubs()
+
+        self.assertEqual(len(hubs), 1)
+        self.assertEqual(hubs[0]["Hub_id"], "HB1")
+
+    def test_fetch_hubs_empty(self):
+        """Test fetching hubs when search_all_ids returns no hubs."""
+        self.coordinator.client.search_all_ids = MagicMock(
+            return_value={"koolnova": [], "hub": []}
+        )
+
+        hubs = self.coordinator._fetch_hubs()
+
+        self.assertEqual(hubs, [])
