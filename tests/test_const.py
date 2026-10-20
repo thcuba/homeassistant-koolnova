@@ -108,6 +108,8 @@ class LimitsTest(unittest.TestCase):
         """Koolnova bans IPs polled more often than once every 30 s."""
         self.assertGreaterEqual(const.MIN_UPDATE_INTERVAL, 30)
         self.assertGreaterEqual(const.DEFAULT_UPDATE_INTERVAL, const.MIN_UPDATE_INTERVAL)
+        # Home default must sit comfortably above the ban threshold, not just at it.
+        self.assertGreaterEqual(const.DEFAULT_UPDATE_INTERVAL, 60)
 
     def test_interval_bounds_are_ordered(self):
         self.assertLess(const.MIN_UPDATE_INTERVAL, const.MAX_UPDATE_INTERVAL)
