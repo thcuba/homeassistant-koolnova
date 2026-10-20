@@ -315,6 +315,48 @@ class HubMethodsTest(ClientTestCase):
 
         self.assertEqual(self.client.get_devices(), [])
 
+    def test_get_sensor_humidity_map_reads_devices_topic_info(self):
+        self._respond([
+            {
+                "sensor": {
+                    "id": 7,
+                    "name": "Living room",
+                    "topic_info": {"humidity": 55.0},
+                }
+            },
+            {
+                "sensor": {
+                    "id": 9,
+                    "name": "Bedroom",
+                    "topic_info": {"humidity": 61.0},
+                }
+            },
+        ])
+
+        mapping = self.client.get_sensor_humidity_map()
+
+        self.assertEqual(mapping, {7: 55.0, 9: 61.0})
+        args, _ = self.session.rest_request.call_args
+        self.assertEqual(args, ("GET", "devices/"))
+
+    def test_get_sensor_humidity_map_skips_missing_humidity(self):
+        self._respond([
+            {"sensor": {"id": 7, "topic_info": {}}},      # no humidity
+            {"sensor": {"id": 8}},                        # no topic_info
+            {"sensor": {}},                               # no id
+            {"id": 99},                                   # no sensor block
+            {"sensor": {"id": 10, "topic_info": {"humidity": 44.0}}},
+        ])
+
+        mapping = self.client.get_sensor_humidity_map()
+
+        self.assertEqual(mapping, {10: 44.0})
+
+    def test_get_sensor_humidity_map_degrades_on_error(self):
+        self.session.rest_request.side_effect = RuntimeError("boom")
+
+        self.assertEqual(self.client.get_sensor_humidity_map(), {})
+
     def test_get_notifications(self):
         self._respond({"data": [{"id": 5}]})
 
