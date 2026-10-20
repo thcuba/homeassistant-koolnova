@@ -149,6 +149,11 @@ new state.
 Fallback data source: flat list of devices with a nested `sensor` dict. Used by the coordinator
 only when the `topics` endpoints fail, so the integration degrades instead of going `unavailable`.
 
+It is also the **only endpoint that exposes the room humidity** — nested as
+`sensor.topic_info.humidity` (a percentage). The aggregated `/topics/sensors/` endpoint does not
+carry it. The client reads it via `get_sensor_humidity_map()` and the coordinator merges it onto
+each sensor as `Room_humidity`; devices that do not report humidity are simply skipped.
+
 ### `GET /notifications/`
 
 Lists notifications. Currently not consumed by the integration; exposed for tooling.

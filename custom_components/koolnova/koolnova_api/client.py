@@ -285,6 +285,32 @@ class KoolnovaAPIRestClient:
             return []
         return json_resp["data"]
 
+    def get_sensor_humidity_map(self) -> Dict[int, Any]:
+        """Return a mapping of sensor id -> humidity reading from /devices/.
+
+        Humidity is exposed on the per-device endpoint (`/devices/`, nested in
+        ``sensor.topic_info.humidity``), not on the aggregated cloud endpoint
+        ``/topics/sensors/`` used by regular polling. This method is the single
+        place that reads it, so a missing field degrades gracefully to an
+        absent mapping instead of raising.
+        """
+        mapping: Dict[int, Any] = {}
+        try:
+            devices = self.get_devices()
+        except Exception as err:
+            _LOGGER.warning("Could not fetch devices for humidity: %s", err)
+            return mapping
+
+        for device in devices:
+            sensor = device.get("sensor") or {}
+            sensor_id = sensor.get("id")
+            if sensor_id is None:
+                continue
+            humidity = sensor.get("topic_info", {}).get("humidity")
+            if humidity is not None:
+                mapping[sensor_id] = humidity
+        return mapping
+
     def get_notifications(self) -> List[Dict[str, Any]]:
         """Return list of notifications."""
         headers = COMMON_HEADERS.copy()

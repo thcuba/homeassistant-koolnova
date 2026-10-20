@@ -204,3 +204,53 @@ class TestKoolnovaCoordinatorHubs(unittest.TestCase):
         hubs = self.coordinator._fetch_hubs()
 
         self.assertEqual(hubs, [])
+
+
+class TestKoolnovaCoordinatorHumidity(unittest.TestCase):
+    """Test suite for KoolnovaDataUpdateCoordinator._enrich_humidity."""
+
+    def setUp(self):
+        """Set up mock HomeAssistant and ConfigEntry for coordinator testing."""
+        self.hass = MagicMock()
+        self.config_entry = MagicMock()
+        self.config_entry.data = {
+            "email": "test@example.com",
+            "password": "secretpassword",
+            "update_interval": 60,
+            "project_update_frequency": 10,
+        }
+        self.config_entry.options = {}
+        self.config_entry.entry_id = "test_entry_id"
+
+        with patch("custom_components.koolnova.coordinator.KoolnovaAPIRestClient"):
+            self.coordinator = KoolnovaDataUpdateCoordinator(
+                self.hass, self.config_entry
+            )
+
+    def test_enrich_humidity_merges_values_by_room_id(self):
+        """Humidity from /devices/ is attached to the matching sensors."""
+        self.coordinator.client.get_sensor_humidity_map = MagicMock(
+            return_value={1: 55.0, 2: 61.0}
+        )
+        sensors = [
+            {"Room_id": 1, "Room_Name": "Living Room"},
+            {"Room_id": 2, "Room_Name": "Bedroom"},
+            {"Room_id": 3, "Room_Name": "Kitchen"},  # no humidity reported
+        ]
+
+        self.coordinator._enrich_humidity(sensors)
+
+        self.assertEqual(sensors[0]["Room_humidity"], 55.0)
+        self.assertEqual(sensors[1]["Room_humidity"], 61.0)
+        self.assertNotIn("Room_humidity", sensors[2])
+
+    def test_enrich_humidity_keeps_sensors_when_api_fails(self):
+        """A failed /devices/ call must not break the sensor list."""
+        self.coordinator.client.get_sensor_humidity_map = MagicMock(
+            side_effect=RuntimeError("boom")
+        )
+        sensors = [{"Room_id": 1, "Room_Name": "Living Room"}]
+
+        self.coordinator._enrich_humidity(sensors)
+
+        self.assertEqual(sensors, [{"Room_id": 1, "Room_Name": "Living Room"}])

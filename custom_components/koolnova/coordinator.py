@@ -64,6 +64,25 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             return all_sensors
         return [s for s in all_sensors if s.get("Topic_id") == topic_id]
 
+    def _enrich_humidity(self, sensors: list) -> None:
+        """Attach each room's humidity (from /devices/) to the sensor dict.
+
+        Humidity is exposed only on the per-device endpoint, so it is fetched
+        separately and merged onto the sensors by room id. Missing values are
+        left untouched (no ``Room_humidity`` key), so the integration keeps
+        working even on accounts/devices that do not report humidity.
+        """
+        try:
+            humidity_map = self.client.get_sensor_humidity_map()
+        except Exception as err:  # pragma: no cover - defensive against API drift
+            _LOGGER.warning("Could not enrich sensors with humidity: %s", err)
+            return
+
+        for sensor in sensors:
+            room_id = sensor.get("Room_id")
+            if room_id in humidity_map:
+                sensor["Room_humidity"] = humidity_map[room_id]
+
     def _fetch_hubs(self) -> list:
         """Fetch all hub states concurrently to prevent N+1 query overhead."""
         hubs = []
@@ -168,6 +187,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.debug("Successfully fetched %d projects, %d sensors and %d hubs",
                              len(projects), len(sensors), len(hubs))
+                self._enrich_humidity(sensors)
                 return {"projects": projects, "sensors": sensors, "hubs": hubs}
             except Exception as e:
                 _LOGGER.warning("Primary fetch failed, trying fallback: %s", e)
@@ -205,6 +225,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
 
             _LOGGER.debug("Successfully fetched %d sensors", len(sensors))
             # Keep existing projects and hubs data, only update sensors
+            self._enrich_humidity(sensors)
             return {
                 "projects": self.data.get("projects", []),
                 "sensors": sensors,
