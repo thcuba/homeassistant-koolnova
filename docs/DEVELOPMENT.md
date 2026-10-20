@@ -54,8 +54,8 @@ connectivity `SensorEntity` in `climate.py` that also reports RSSI and per-room 
 ### Two polling rates
 
 The coordinator refreshes **sensors** every cycle, but the (more expensive) **project** list only
-every `project_update_frequency` cycles, caching the rest (`DEFAULT_PROJECT_UPDATE_FREQUENCY` = 10
-in `const.py`).
+every `project_update_frequency` cycles, caching the rest (`DEFAULT_PROJECT_UPDATE_FREQUENCY` = 20
+in `const.py` — with the default 180 s update interval, projects refresh ~once an hour).
 
 Option changes (interval, offered modes, temperature range) reload the coordinator's configuration
 without reloading the whole config entry (`async_reload_entry` in `__init__.py`).

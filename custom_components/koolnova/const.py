@@ -15,10 +15,14 @@ PLATFORMS = ["climate", "binary_sensor", "switch"]
 # CONFIGURABLE: defaults and limits.
 # IMPORTANT: Koolnova bans IPs automatically when the API is polled more than
 # once every 30 seconds (confirmed by their support, see issue #4).
-DEFAULT_UPDATE_INTERVAL = 60  # seconds
+# Defaults favour a home install: 180 s between polls, with a full
+# (projects+modules+hubs) refresh once every 20 cycles (~1/h). This keeps the
+# cloud traffic low (~20+ requests/hour) while the zone temperatures stay
+# fresh enough for a thermostat.
+DEFAULT_UPDATE_INTERVAL = 180  # seconds
 MIN_UPDATE_INTERVAL = 30      # configurable minimum (limit imposed by Koolnova)
 MAX_UPDATE_INTERVAL = 3600    # configurable maximum
-DEFAULT_PROJECT_UPDATE_FREQUENCY = 10  # refresh projects every N updates
+DEFAULT_PROJECT_UPDATE_FREQUENCY = 20  # refresh projects every N updates
 MIN_PROJECT_UPDATE_FREQUENCY = 1      # configurable minimum (always refresh)
 MAX_PROJECT_UPDATE_FREQUENCY = 300    # configurable maximum
 

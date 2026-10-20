@@ -30,7 +30,7 @@ For developers and advanced users, see the detailed docs:
 - Hub control on legacy accounts (ON/OFF + behavior mode)
 - Connectivity binary sensor per project (online/offline)
 - Per-zone on/off switch
-- Smart polling (sensor updates every minute, cached projects)
+- Smart polling (sensor updates every 3 minutes, cached projects)
 - Advanced UI configuration
 - ?? Translations: English, Spanish, Italian
 
