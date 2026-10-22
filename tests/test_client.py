@@ -352,6 +352,20 @@ class HubMethodsTest(ClientTestCase):
 
         self.assertEqual(mapping, {10: 44.0})
 
+    def test_get_sensor_humidity_map_rejects_boolean_humidity(self):
+        # The cloud reports ``humidity`` as the boolean ``false`` when a
+        # device has no humidity sensor, which must never surface as a
+        # reading. Numeric values are still accepted.
+        self._respond([
+            {"sensor": {"id": 7, "topic_info": {"humidity": False}}},
+            {"sensor": {"id": 8, "topic_info": {"humidity": True}}},
+            {"sensor": {"id": 9, "topic_info": {"humidity": 0.0}}},
+        ])
+
+        mapping = self.client.get_sensor_humidity_map()
+
+        self.assertEqual(mapping, {9: 0.0})
+
     def test_get_sensor_humidity_map_degrades_on_error(self):
         self.session.rest_request.side_effect = RuntimeError("boom")
 
