@@ -146,13 +146,20 @@ new state.
 
 ### `GET /devices/`
 
-Fallback data source: flat list of devices with a nested `sensor` dict. Used by the coordinator
-only when the `topics` endpoints fail, so the integration degrades instead of going `unavailable`.
+Used as fallback data source: flat list of devices with a nested `sensor` dict, and by the
+coordinator only when the `topics` endpoints fail, so the integration degrades instead of
+going `unavailable`.
 
-It is also the **only endpoint that exposes the room humidity** — nested as
-`sensor.topic_info.humidity` (a percentage). The aggregated `/topics/sensors/` endpoint does not
-carry it. The client reads it via `get_sensor_humidity_map()` and the coordinator merges it onto
-each sensor as `Room_humidity`; devices that do not report humidity are simply skipped.
+On most Koolnova cloud accounts this endpoint does **not** carry a usable room humidity: the
+device's `sensor.topic_info.humidity` field is reported as the boolean `false` (or is absent),
+not as a percentage. `get_sensor_humidity_map()` therefore only accepts a **real numeric**
+value (`int`/`float`, never a boolean) and skips everything else — so a device without an
+exposed humidity simply never produces a `Room_humidity` entry and no bogus sensor is created.
+
+> **Note on local humidity (Modbus, no cloud).** A real physical humidity sensor wired to the
+> 100-CPND00 controller (its "humidity sensor input") is **not** exposed through this cloud
+> API. Reading it requires local Modbus access (RS485 on the controller), outside the scope of
+> this cloud-only integration.
 
 ### `GET /notifications/`
 

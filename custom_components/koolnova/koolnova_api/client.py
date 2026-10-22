@@ -307,8 +307,12 @@ class KoolnovaAPIRestClient:
             if sensor_id is None:
                 continue
             humidity = sensor.get("topic_info", {}).get("humidity")
-            if humidity is not None:
-                mapping[sensor_id] = humidity
+            # Only accept a real numeric percentage. The cloud reports
+            # ``false`` (a boolean) when a device does not expose humidity,
+            # and ``None`` means the field is absent; both must be skipped
+            # rather than surfaced as a bogus reading.
+            if isinstance(humidity, (int, float)) and not isinstance(humidity, bool):
+                mapping[sensor_id] = float(humidity)
         return mapping
 
     def get_notifications(self) -> List[Dict[str, Any]]:
