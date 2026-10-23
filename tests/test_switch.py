@@ -2,11 +2,92 @@
 
 import sys
 import os
+import types
 import unittest
 from unittest.mock import AsyncMock, MagicMock
 
 # Ensure project root is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _install_home_assistant_stubs():
+    """Register minimal stubs for HA modules so tests run in lightweight environments without Home Assistant installed."""
+    if "homeassistant.components.switch" in sys.modules:
+        return
+
+    from enum import StrEnum
+
+    class HVACMode(StrEnum):
+        OFF = "off"
+        HEAT = "heat"
+        COOL = "cool"
+        HEAT_COOL = "heat_cool"
+        AUTO = "auto"
+        DRY = "dry"
+        FAN_ONLY = "fan_only"
+
+    class SwitchEntity:
+        """Stub SwitchEntity simulating Home Assistant Entity property behavior."""
+        _attr_should_poll = True
+        _attr_name = None
+        _attr_unique_id = None
+
+        @property
+        def name(self):
+            return self._attr_name
+
+        @property
+        def unique_id(self):
+            return self._attr_unique_id
+
+        @property
+        def should_poll(self):
+            return self._attr_should_poll
+
+        async def async_added_to_hass(self):
+            pass
+
+        def async_on_remove(self, func):
+            pass
+
+        def async_write_ha_state(self):
+            pass
+
+    ha = sys.modules.get("homeassistant")
+    if ha is None:
+        ha = types.ModuleType("homeassistant")
+        ha.__path__ = []
+        sys.modules["homeassistant"] = ha
+
+    components = sys.modules.get("homeassistant.components")
+    if components is None:
+        components = types.ModuleType("homeassistant.components")
+        components.__path__ = []
+        sys.modules["homeassistant.components"] = components
+        setattr(ha, "components", components)
+
+    climate = sys.modules.get("homeassistant.components.climate")
+    if climate is None:
+        climate = types.ModuleType("homeassistant.components.climate")
+        climate.HVACMode = HVACMode
+        climate.FAN_LOW = "low"
+        climate.FAN_MEDIUM = "medium"
+        climate.FAN_HIGH = "high"
+        climate.FAN_AUTO = "auto"
+        sys.modules["homeassistant.components.climate"] = climate
+        setattr(components, "climate", climate)
+
+    switch = sys.modules.get("homeassistant.components.switch")
+    if switch is None:
+        switch = types.ModuleType("homeassistant.components.switch")
+        switch.SwitchEntity = SwitchEntity
+        sys.modules["homeassistant.components.switch"] = switch
+        setattr(components, "switch", switch)
+    elif not hasattr(switch, "SwitchEntity"):
+        setattr(switch, "SwitchEntity", SwitchEntity)
+
+
+_install_home_assistant_stubs()
 
 from homeassistant.components.climate import HVACMode
 from custom_components.koolnova.const import DOMAIN, HVAC_TO_KOOLNOVA_ZONE_STATUS
@@ -52,11 +133,7 @@ class TestKoolnovaZoneSwitch(unittest.IsolatedAsyncioTestCase):
     async def test_async_added_to_hass(self):
         """Test async_added_to_hass registers coordinator listener."""
         self.switch.async_on_remove = MagicMock()
-
-        # Call base class super().async_added_to_hass or mock it if needed
-        # SwitchEntity / Entity super().async_added_to_hass in stub HA environment
-        with unittest.mock.patch("homeassistant.helpers.entity.Entity.async_added_to_hass", new_callable=AsyncMock):
-            await self.switch.async_added_to_hass()
+        await self.switch.async_added_to_hass()
 
         self.coordinator.async_add_listener.assert_called_once_with(self.switch.async_write_ha_state)
         self.switch.async_on_remove.assert_called_once()
