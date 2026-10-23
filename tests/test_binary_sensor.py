@@ -2,12 +2,130 @@
 
 import sys
 import os
+import types
 import unittest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Ensure project root and custom_components are in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _install_home_assistant_stubs():
+    """Register minimal stubs for HA modules required by binary_sensor.py if HA is not installed."""
+    if "homeassistant.core" in sys.modules:
+        return
+
+    from enum import StrEnum
+
+    # ---- homeassistant.config_entries ----
+    config_entries = types.ModuleType("homeassistant.config_entries")
+    config_entries.ConfigEntry = MagicMock
+
+    # ---- homeassistant.core ----
+    core = types.ModuleType("homeassistant.core")
+    core.HomeAssistant = MagicMock
+
+    # ---- homeassistant.exceptions ----
+    exceptions = types.ModuleType("homeassistant.exceptions")
+    exceptions.ConfigEntryAuthFailed = type("ConfigEntryAuthFailed", (Exception,), {})
+
+    # ---- homeassistant.helpers.update_coordinator ----
+    class _DataUpdateCoordinator:
+        def __init__(self, hass, logger, **kwargs):
+            self.hass = hass
+            self.update_interval = kwargs.get("update_interval")
+            self.data = {}
+
+    uc = types.ModuleType("homeassistant.helpers.update_coordinator")
+    uc.DataUpdateCoordinator = _DataUpdateCoordinator
+    uc.UpdateFailed = type("UpdateFailed", (Exception,), {})
+
+    # ---- homeassistant.const ----
+    ha_const = types.ModuleType("homeassistant.const")
+    ha_const.Platform = MagicMock
+
+    # ---- homeassistant.components.climate ----
+    class HVACMode(StrEnum):
+        OFF = "off"
+        HEAT = "heat"
+        COOL = "cool"
+        HEAT_COOL = "heat_cool"
+        AUTO = "auto"
+        DRY = "dry"
+        FAN_ONLY = "fan_only"
+
+    climate = types.ModuleType("homeassistant.components.climate")
+    climate.HVACMode = HVACMode
+    climate.FAN_LOW = "low"
+    climate.FAN_MEDIUM = "medium"
+    climate.FAN_HIGH = "high"
+    climate.FAN_AUTO = "auto"
+
+    # ---- homeassistant.components.binary_sensor ----
+    class BinarySensorDeviceClass(StrEnum):
+        CONNECTIVITY = "connectivity"
+
+    class BinarySensorEntity:
+        """Minimal stub for BinarySensorEntity."""
+
+        _attr_has_entity_name = False
+        _attr_translation_key = None
+        _attr_device_class = None
+        _attr_should_poll = True
+
+        async def async_added_to_hass(self):
+            pass
+
+        def async_on_remove(self, func):
+            pass
+
+        def async_write_ha_state(self):
+            pass
+
+    binary_sensor_mod = types.ModuleType("homeassistant.components.binary_sensor")
+    binary_sensor_mod.BinarySensorDeviceClass = BinarySensorDeviceClass
+    binary_sensor_mod.BinarySensorEntity = BinarySensorEntity
+
+    # ---- homeassistant.helpers.entity ----
+    def DeviceInfo(**kwargs):
+        return kwargs
+
+    entity_mod = types.ModuleType("homeassistant.helpers.entity")
+    entity_mod.DeviceInfo = DeviceInfo
+
+    # ---- Wire the package tree ----
+    ha = types.ModuleType("homeassistant")
+    ha.const = ha_const
+    ha.config_entries = config_entries
+    ha.core = core
+    ha.exceptions = exceptions
+
+    components = types.ModuleType("homeassistant.components")
+    components.climate = climate
+    components.binary_sensor = binary_sensor_mod
+
+    helpers = types.ModuleType("homeassistant.helpers")
+    helpers.update_coordinator = uc
+    helpers.entity = entity_mod
+
+    ha.components = components
+    ha.helpers = helpers
+
+    sys.modules["homeassistant"] = ha
+    sys.modules["homeassistant.const"] = ha_const
+    sys.modules["homeassistant.config_entries"] = config_entries
+    sys.modules["homeassistant.core"] = core
+    sys.modules["homeassistant.exceptions"] = exceptions
+    sys.modules["homeassistant.components"] = components
+    sys.modules["homeassistant.components.climate"] = climate
+    sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_mod
+    sys.modules["homeassistant.helpers"] = helpers
+    sys.modules["homeassistant.helpers.update_coordinator"] = uc
+    sys.modules["homeassistant.helpers.entity"] = entity_mod
+
+
+_install_home_assistant_stubs()
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from custom_components.koolnova.binary_sensor import (
