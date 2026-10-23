@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Session manager for the Koolnova REST API in order to maintain authentication token between calls."""
 
-import asyncio
 import logging
 import time
 from typing import Optional
