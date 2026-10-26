@@ -18,6 +18,7 @@ For developers and advanced users, see the detailed docs:
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** � Architecture and import rules
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** � Common problems and solutions
 - **[DEV_ENV.md](docs/DEV_ENV.md)** � Development environment setup
+- **[API-INDEX.md](docs/API-INDEX.md)** — Where each part of the Koolnova API is documented
 - **[API.md](docs/API.md)** � Koolnova API reference
 - **[RELEASE.md](docs/RELEASE.md)** � Release history and process
 
