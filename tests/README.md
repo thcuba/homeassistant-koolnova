@@ -18,6 +18,7 @@ These cover the parts that have actually broken in production:
 | `test_session.py` | the login payload field (`email`, not `username`) and the browser headers, i.e. the v1.3.0 → v1.3.1 regression and issue #4 |
 | `test_client.py` | HTTP verbs and paths per endpoint (`PUT` for sensors, `PATCH` for topics), response parsing, and the auth-failure cooldown that prevents IP bans |
 | `test_const.py` | the mode/status/fan code tables and their auto-generated inverses |
+| `test_no_committed_secrets.py` | a credential or a real email address committed anywhere in the tree |
 
 The Home Assistant side (`climate.py`, `coordinator.py`, `config_flow.py`) is not covered: it needs
 a running Home Assistant to be meaningful. See [../docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md).
