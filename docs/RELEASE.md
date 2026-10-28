@@ -131,10 +131,24 @@ REPOSITORY_ROOT/
 Downloading luisgsluis/homeassistant-koolnova with version vX.Y.Z failed with (No content to download)
 ```
 
+**PROBLEM 2**: HACS keeps offering the same update. It reads `manifest.json` to decide whether an
+update is available, so if the manifest is behind while the tags move on it installs the release,
+still sees the old version declared, and proposes the update again - forever.
+
 **SOLUTION**: Ensure that:
 - Tag is `v1.2.1`
 - `manifest.json` has `"version": "1.2.1"`
 - They are exactly identical (no prefix/suffix)
+
+**Enforced automatically**: `scripts/check_version.py`, run by the `Release version` workflow. A
+pushed tag whose `manifest.json` disagrees fails the build, and a pull request whose manifest has
+fallen behind the newest tag fails too - so the drift cannot go unnoticed again. Both checks run
+locally as well:
+
+```bash
+python scripts/check_version.py --tag 2.0.9                        # a release about to be tagged
+python scripts/check_version.py --not-older-than $(git tag --sort=-creatordate | head -1)
+```
 
 ## Distribution
 
@@ -145,7 +159,7 @@ Downloading luisgsluis/homeassistant-koolnova with version vX.Y.Z failed with (N
 ## Pre-Release Checklist
 
 - [ ] All changes tested in Home Assistant
-- [ ] `manifest.json` version matches upcoming tag
+- [ ] `manifest.json` version matches upcoming tag (`python scripts/check_version.py --tag <tag>`)
 - [ ] `hacs.json` configured correctly
 - [ ] `custom_components/` directory present
 - [ ] All imports use relative syntax (development rule check)
