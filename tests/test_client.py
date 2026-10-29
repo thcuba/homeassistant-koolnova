@@ -379,5 +379,38 @@ class HubMethodsTest(ClientTestCase):
         self.assertEqual(args, ("GET", "notifications/"))
 
 
+class SetRequestTimeoutTest(unittest.TestCase):
+    """Tests for set_request_timeout."""
+
+    def test_set_request_timeout_with_no_session(self):
+        client = KoolnovaAPIRestClient("user@example.com", "secret", request_timeout=10.0)
+        self.assertIsNone(client.session)
+        self.assertEqual(client.request_timeout, 10.0)
+
+        client.set_request_timeout(20.0)
+        self.assertEqual(client.request_timeout, 20.0)
+        self.assertIsNone(client.session)
+
+    def test_set_request_timeout_with_active_session(self):
+        client = KoolnovaAPIRestClient("user@example.com", "secret", request_timeout=10.0)
+        session = MagicMock()
+        session.request_timeout = 10.0
+        client.session = session
+
+        client.set_request_timeout(30.0)
+        self.assertEqual(client.request_timeout, 30.0)
+        self.assertEqual(session.request_timeout, 30.0)
+
+    def test_set_request_timeout_to_none(self):
+        client = KoolnovaAPIRestClient("user@example.com", "secret", request_timeout=10.0)
+        session = MagicMock()
+        session.request_timeout = 10.0
+        client.session = session
+
+        client.set_request_timeout(None)
+        self.assertIsNone(client.request_timeout)
+        self.assertIsNone(session.request_timeout)
+
+
 if __name__ == "__main__":
     unittest.main()
