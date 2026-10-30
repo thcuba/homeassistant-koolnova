@@ -6,7 +6,6 @@ en la entidad KoolnovaProjectEntity
 
 import sys
 import os
-import json
 from datetime import datetime
 from collections import Counter
 
