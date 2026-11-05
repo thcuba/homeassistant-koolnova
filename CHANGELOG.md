@@ -5,7 +5,7 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
-## [2.1.0] — 2026-11-02
+## [2.0.10] — 2026-11-05
 
 ### Added
 
