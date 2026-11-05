@@ -23,6 +23,15 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   startup. Previously a probe that began reporting after Home Assistant started needed an
   integration reload to show up. Zones that return `null` still get no entity.
 
+## [2.0.4] — 2026-10-04
+
+### Changed
+
+- **50 s minimum Koolnova request timeout.** The default request timeout is now **50 s** (the value
+  recommended by Koolnova support) and requests to the Koolnova servers are hard-floored so they
+  never time out below 50 s, even if a lower `request_timeout` is configured. Timeouts on Home
+  Assistant calls are unaffected. See [docs/API.md](docs/API.md).
+
 ## [2.0.3] — 2026-08-18
 
 ### Added
