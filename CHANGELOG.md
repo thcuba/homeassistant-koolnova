@@ -5,14 +5,23 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
-## [2.0.4] — 2026-10-04
+## [2.1.0] — 2026-11-02
+
+### Added
+
+- **Per-zone humidity sensors** (thanks to @50bbx). `GET /topics/sensors/` returns a `humidity`
+  field (relative humidity, %) for each zone. Every zone that reports a value gets a
+  `sensor.koolnova_<room>_humidity` entity (device class `humidity`, state class `measurement`).
+  No extra API calls: the value comes from the sensors request the integration already makes. See
+  [docs/API.md](docs/API.md).
+- **Per-zone CO₂ sensors.** Same mechanism for the `co2` field: `sensor.koolnova_<room>_co2`
+  (device class `carbon_dioxide`, ppm), only for zones that report a value.
 
 ### Changed
 
-- **50 s minimum Koolnova request timeout.** The default request timeout is now **50 s** (the value
-  recommended by Koolnova support) and requests to the Koolnova servers are hard-floored so they
-  never time out below 50 s, even if a lower `request_timeout` is configured. Timeouts on Home
-  Assistant calls are unaffected. See [docs/API.md](docs/API.md).
+- Humidity and CO₂ entities are created **as soon as a zone starts reporting a value**, not only at
+  startup. Previously a probe that began reporting after Home Assistant started needed an
+  integration reload to show up. Zones that return `null` still get no entity.
 
 ## [2.0.3] — 2026-08-18
 

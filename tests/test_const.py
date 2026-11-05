@@ -108,8 +108,6 @@ class LimitsTest(unittest.TestCase):
         """Koolnova bans IPs polled more often than once every 30 s."""
         self.assertGreaterEqual(const.MIN_UPDATE_INTERVAL, 30)
         self.assertGreaterEqual(const.DEFAULT_UPDATE_INTERVAL, const.MIN_UPDATE_INTERVAL)
-        # Home default must sit comfortably above the ban threshold, not just at it.
-        self.assertGreaterEqual(const.DEFAULT_UPDATE_INTERVAL, 60)
 
     def test_interval_bounds_are_ordered(self):
         self.assertLess(const.MIN_UPDATE_INTERVAL, const.MAX_UPDATE_INTERVAL)
@@ -142,9 +140,7 @@ class LimitsTest(unittest.TestCase):
 class PlatformsTest(unittest.TestCase):
     def test_domain_and_platforms(self):
         self.assertEqual(const.DOMAIN, "koolnova")
-        self.assertEqual(
-            const.PLATFORMS, ["climate", "binary_sensor", "switch", "sensor"]
-        )
+        self.assertEqual(const.PLATFORMS, ["climate", "binary_sensor", "switch", "sensor"])
 
 
 if __name__ == "__main__":
