@@ -1,122 +1,80 @@
-# HACS Submission Template
+# HACS Submission
 
-This document provides a template for submitting the Koolnova Home Assistant integration to HACS.
+How to get this integration into the HACS **default store**, i.e. visible to every user without
+adding the repository URL by hand. Everything below is taken from the current HACS documentation
+(<https://hacs.xyz/docs/publish/include/> and <https://hacs.xyz/docs/publish/integration/>) and
+verified against this repository.
 
-## 📝 Pull Request Template for HACS
+## Repository Information
 
-When submitting to the [hacs/default](https://github.com/hacs/default) repository, use the following information:
-
-### Repository Information
 - **Repository URL:** https://github.com/thcuba/homeassistant-koolnova
 - **Category:** Integration
-- **Integration Type:** hub (cloud polling)
-- **Target Home Assistant Version:** 2024.12.0+
+- **Integration type:** hub (cloud polling)
+- **Minimum Home Assistant:** 2025.12.0 (as declared in `hacs.json`)
+- **Country:** Spain and Italy (`"country": ["ES", "IT"]`)
+- **License:** MIT
 
-### What This Integration Does
+## Requirements and current state
 
-The Koolnova Home Assistant integration provides full control of Koolnova HVAC climate control systems via the Koolnova REST API. Users can manage:
-- Per-zone temperature control
-- HVAC mode selection (COOL / HEAT / AUTO / OFF)
-- Fan speed adjustment
-- Global project-level controls
-- Real-time sensor updates with smart polling
+| Requirement | State |
+|---|---|
+| Public GitHub repository with a description and a README | ✅ |
+| Repository topics (for searchability) | ✅ includes `hacs` |
+| `hacs.json` in the repository root with at least `name` | ✅ |
+| One integration only, all files under `custom_components/koolnova/` | ✅ |
+| `manifest.json` with `domain`, `documentation`, `issue_tracker`, `codeowners`, `name`, `version` | ✅ |
+| Brand assets in the repository — `custom_components/koolnova/brand/icon.png` | ✅ |
+| `hassfest` passing | ✅ |
+| **HACS Action passing with no errors and no `ignore:`** | ❌ the workflow passes `ignore: brands` |
+| A **full GitHub release** (not just a tag) after the checks are green | ✅ `2.0.10` |
+| PR opened by the owner or a major contributor, and editable (not from an organization account) | ✅ `@thcuba` is the owner |
 
-### Key Features
-- ✅ Config flow UI integration
-- ✅ Manifest validation ready
-- ✅ MIT Licensed
-- ✅ Full documentation included
-- ✅ Active maintenance
-- ✅ GitHub issue tracking
+The only open item is `ignore: brands` in `.github/workflows/validate.yml`. It is harmless for a
+*custom repository* (that is how this repo is installed today), but the HACS Action has to pass
+**without ignores** to be accepted as a default. Removing it works because the brand assets are
+inside the package: the check used to fall back to `home-assistant/brands`, which no longer accepts
+custom integrations.
 
-### Repository Structure
-```
-homeassistant-koolnova/
-├── custom_components/koolnova/    # Main integration code
-│   ├── manifest.json               # Integration metadata
-│   ├── __init__.py                 # Core integration
-│   ├── config_flow.py              # Configuration UI
-│   └── [other component files]
-├── docs/                           # Documentation
-│   ├── ARCHITECTURE.md             # Architecture details
-│   ├── API.md                      # Koolnova API reference
-│   ├── DEV_ENV.md                  # Development setup
-│   ├── TROUBLESHOOTING.md          # Troubleshooting guide
-│   └── RELEASE.md                  # Release notes
-├── brand/                          # Brand assets
-├── tests/                          # Test suite
-├── hacs.json                       # HACS configuration
-├── icon.png                        # Integration icon
-└── README.md                       # Main documentation
-```
+## How to submit
 
-### Validation Checklist
-- ✅ Repository is public
-- ✅ MIT License included
-- ✅ hacs.json properly configured
-- ✅ manifest.json in custom_components/koolnova/
-- ✅ config_flow.py implemented
-- ✅ Integration icon (icon.png) provided
-- ✅ README with installation instructions
-- ✅ Complete documentation in docs/
+1. Create a **new branch from `master`** in your fork of
+   [hacs/default](https://github.com/hacs/default) — do not commit on `master`.
+2. Edit the file **`integration`** (not `integrations.json`). It is a JSON array of `"owner/repo"`
+   strings, one per line, kept in alphabetical order. Add:
 
-### Testing & Quality
-- ✅ HACS validation workflow configured
-- ✅ Integration passes HACS validation
-- ✅ No blocking issues or security concerns
-- ✅ Active maintenance and support
-
-### Original Creator Attribution
-- **Original Creator:** [@luisgsluis](https://github.com/luisgsluis)
-- **Current Maintainer:** [@thcuba](https://github.com/thcuba)
-
----
-
-## 🚀 Steps to Submit
-
-1. **Fork** the [hacs/default](https://github.com/hacs/default) repository
-2. **Edit** the `integrations.json` file
-3. **Add** an entry for the Koolnova integration following the existing format:
    ```json
-   {
-     "domain": "koolnova",
-     "name": "Koolnova",
-     "documentation": "https://github.com/thcuba/homeassistant-koolnova",
-     "homeassistant": "2024.12.0",
-     "iot_class": "cloud_polling",
-     "issue_tracker": "https://github.com/thcuba/homeassistant-koolnova/issues",
-     "requirements": ["requests"],
-     "country": ["IT"]
-   }
+   "thcuba/homeassistant-koolnova",
    ```
-4. **Create** a Pull Request with title: `Add Koolnova integration`
-5. **Wait** for HACS maintainers to review and merge
 
-## ✅ Pre-Submission Verification
+   in the right alphabetical position, not at the end.
+3. Open the pull request and fill in the template **completely**. Incomplete or misrepresenting
+   PRs are closed without notice.
+4. Wait for review. New additions are processed in batches and can take months.
 
-Run these checks before submitting:
+Rules worth knowing before opening the PR:
+
+- Only the owner or a major contributor of the repository may submit it.
+- Custom integrations that override a core integration, or that exist only for alpha/beta testing,
+  are not accepted as defaults (they can still be used as custom repositories).
+- The repository must not be archived, and it must have a license.
+- Once merged, the repository is picked up by the next scheduled scan.
+
+## Pre-submission check (local)
 
 ```bash
-# Clone the repository
-git clone https://github.com/thcuba/homeassistant-koolnova
-cd homeassistant-koolnova
-
-# Verify file structure
-ls -la custom_components/koolnova/manifest.json
-ls -la hacs.json
-ls -la icon.png
-
-# Check JSON validity
-python3 -m json.tool custom_components/koolnova/manifest.json
-python3 -m json.tool hacs.json
+python3 -m json.tool custom_components/koolnova/manifest.json   # valid manifest
+python3 -m json.tool hacs.json                                  # valid hacs.json
+ls custom_components/koolnova/brand/icon.png                    # brand inside the package
+python3 scripts/check_version.py --not-older-than $(git tag --sort=-creatordate | head -1)
 ```
 
-## 📚 Additional Resources
+## Attribution
 
-- [HACS Integration Documentation](https://hacs.xyz/docs/publish/integration)
-- [Home Assistant Integration Requirements](https://developers.home-assistant.io/docs/creating_integration_manifest)
-- [Manifest Documentation](https://developers.home-assistant.io/docs/creating_component_manifest/)
+- **Original creator:** [@luisgsluis](https://github.com/luisgsluis)
+- **Current maintainer:** [@thcuba](https://github.com/thcuba)
 
----
+## Resources
 
-**Status:** Ready for HACS submission ✅
+- [HACS — include default repositories](https://hacs.xyz/docs/publish/include/)
+- [HACS — integration requirements](https://hacs.xyz/docs/publish/integration/)
+- [Home Assistant — integration manifest](https://developers.home-assistant.io/docs/creating_integration_manifest)

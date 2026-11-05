@@ -201,7 +201,7 @@ with *extra keys not allowed*.
   "name": "Koolnova",
   "homeassistant": "2025.12.0",
   "render_readme": true,
-  "country": ["ES"],
+  "country": ["ES", "IT"],
   "hide_default_branch": false
 }
 ```
