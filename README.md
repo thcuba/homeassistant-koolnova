@@ -29,7 +29,8 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
   codes sent to the API are unchanged)
 - 🛡️ **Robust against the brittle API**: retries with exponential backoff on timeouts, network
   errors, rate limiting (429) and server errors (5xx); auto-refreshes the session token on 401;
-  a 60 s per-request timeout; falls back to the `/devices/` endpoint when the main ones fail
+  a 50 s per-request timeout, floored at 45 s; falls back to the `/devices/` endpoint when the
+  main ones fail
 - 🔄 **Staggered polling**: sensors every cycle, the more expensive project list cached
 - 🎛️ **Setup and intervals configurable from the UI**
 - 🌍 Translations: English, Spanish, Italian
@@ -86,7 +87,7 @@ Options available afterwards through *Configure*:
 | Zone HVAC modes | OFF, AUTO | COOL / HEAT / OFF / AUTO |
 | Temperature range | 21–27 °C | 15–35 °C |
 | Temperature precision | 0.5 °C | 0.5 or 1 °C |
-| API request timeout | 45 s | 5–300 s |
+| API request timeout | 50 s | 45–300 s |
 
 ## Documentation
 

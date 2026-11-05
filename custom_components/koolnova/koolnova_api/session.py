@@ -22,10 +22,10 @@ DEFAULT_RETRY_BACKOFF = 1.0  # base delay in seconds
 DEFAULT_RETRY_MAX_BACKOFF = 30.0  # max delay in seconds
 
 # Per-request timeout. Without one, a hung request blocks a polling cycle forever.
-# 50s is the minimum recommended by Kool support; never go below it.
+# 45s is the minimum recommended by Kool support; never go below it.
 REQUEST_TIMEOUT = 50
-# Hard floor: requests to the Koolnova servers never time out below this value.
-MIN_REQUEST_TIMEOUT = 50
+
+MIN_REQUEST_TIMEOUT = 45
 
 # Session keepalive: refresh token if last request was longer ago than this
 SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
