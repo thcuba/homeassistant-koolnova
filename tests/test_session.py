@@ -274,11 +274,11 @@ class RequestTimeoutTest(unittest.TestCase):
 
             self.assertEqual(request.call_args.kwargs["timeout"], 50)
 
-    def test_an_explicit_timeout_is_floored_to_50s(self):
+    def test_an_explicit_timeout_is_floored_to_45s(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:
             self.session.rest_request("GET", "projects/", timeout=10)
 
-        self.assertEqual(request.call_args.kwargs["timeout"], 50)
+        self.assertEqual(request.call_args.kwargs["timeout"], 45)
 
     def test_a_configured_timeout_is_floored_on_auth_and_api_calls(self):
         with patch("requests.Session.request", return_value=_ok_response()) as request:
@@ -287,8 +287,8 @@ class RequestTimeoutTest(unittest.TestCase):
 
         auth_timeout = request.call_args_list[0].kwargs["timeout"]
         api_timeout = request.call_args_list[1].kwargs["timeout"]
-        self.assertEqual(auth_timeout, 50)
-        self.assertEqual(api_timeout, 50)
+        self.assertEqual(auth_timeout, 45)
+        self.assertEqual(api_timeout, 45)
 
 
 if __name__ == "__main__":

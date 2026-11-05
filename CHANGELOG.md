@@ -5,6 +5,13 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [Unreleased]
+
+### Changed
+
+- **Minimum request timeout lowered to 45 s** (was 50 s). 45 s is the value recommended by
+  Koolnova support, so the hard floor is now 45 s; the default stays 50 s.
+
 ## [2.0.10] — 2026-11-05
 
 ### Added

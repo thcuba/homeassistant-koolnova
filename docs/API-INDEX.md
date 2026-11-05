@@ -29,7 +29,7 @@ The four rules that break everything when ignored are at the top of it, and they
 1. browser-like headers on **every** request — without them the API answers `404`, not `401`;
 2. a trailing slash on **every** path;
 3. at most one request every **30 s**, or your IP is banned;
-4. a **50 s** minimum request timeout.
+4. a **45 s** minimum request timeout (default 50 s).
 
 ## Endpoint coverage
 
