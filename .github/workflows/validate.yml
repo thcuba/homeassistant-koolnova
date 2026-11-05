@@ -1,5 +1,10 @@
 name: Validate
 
+# The single validation workflow of this repo: HACS compliance (hacs/action),
+# hassfest and the unit tests. A second file (validate.yaml) used to run only
+# the HACS action on every branch and every day, so each PR ran the same
+# validation twice; it was removed and its coverage lives here.
+
 on:
   push:
     branches: [main]
@@ -8,10 +13,18 @@ on:
     - cron: "0 0 * * 0"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   hacs:
     name: HACS
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: hacs/action@main
@@ -25,6 +38,7 @@ jobs:
   hassfest:
     name: Hassfest
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
@@ -32,6 +46,7 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
