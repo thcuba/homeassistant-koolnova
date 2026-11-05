@@ -1,7 +1,7 @@
 # Koolnova for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![release](https://img.shields.io/github/v/release/luisgsluis/homeassistant-koolnova)](https://github.com/luisgsluis/homeassistant-koolnova/releases)
+[![release](https://img.shields.io/github/v/release/thcuba/homeassistant-koolnova)](https://github.com/thcuba/homeassistant-koolnova/releases)
 
 Custom integration that controls **Koolnova** HVAC systems from Home Assistant through their cloud
 API. Zones, the project as a whole, and (on legacy accounts) the physical hub are exposed as
@@ -63,7 +63,7 @@ covers other patterns, like grouping fan control by floor instead of by zone.
 ### HACS (recommended)
 
 1. HACS → ⋮ menu → **Custom repositories** → add
-   `https://github.com/luisgsluis/homeassistant-koolnova` with category *Integration*.
+   `https://github.com/thcuba/homeassistant-koolnova` with category *Integration*.
 2. Search for **Koolnova**, download it and restart Home Assistant.
 
 ### Manual
@@ -102,7 +102,7 @@ Unofficial project, not affiliated with Koolnova. It relies on an undocumented A
 manufacturer may change or shut down at any time. The REST client bundled in `koolnova_api/` is a
 fork of the `koolnova-api` package, with credit to its original author.
 
-MIT licensed · [Issues](https://github.com/luisgsluis/homeassistant-koolnova/issues)
+MIT licensed · [Issues](https://github.com/thcuba/homeassistant-koolnova/issues)
 
 ## Looking for Contributors
 

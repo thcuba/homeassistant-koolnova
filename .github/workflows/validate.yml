@@ -1,9 +1,9 @@
 name: Validate
 
 # The single validation workflow of this repo: HACS compliance (hacs/action),
-# hassfest and the unit tests. A second file (validate.yaml) used to run only
-# the HACS action on every branch and every day, so each PR ran the same
-# validation twice; it was removed and its coverage lives here.
+# hassfest and the unit tests. Overlapping workflows used to run the same
+# validation more than once per PR (a second HACS-only workflow fired on every
+# branch and daily); they were removed and their coverage lives here.
 
 on:
   push:
