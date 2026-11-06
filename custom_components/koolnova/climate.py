@@ -79,15 +79,27 @@ class KoolnovaConfigMixin:
 
     def _get_min_temp(self):
         """Get configured minimum temperature."""
-        return self._get_config_value(CONF_MIN_TEMP, DEFAULT_MIN_TEMP)
+        val = self._get_config_value(CONF_MIN_TEMP, DEFAULT_MIN_TEMP)
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return DEFAULT_MIN_TEMP
 
     def _get_max_temp(self):
         """Get configured maximum temperature."""
-        return self._get_config_value(CONF_MAX_TEMP, DEFAULT_MAX_TEMP)
+        val = self._get_config_value(CONF_MAX_TEMP, DEFAULT_MAX_TEMP)
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return DEFAULT_MAX_TEMP
 
     def _get_temp_precision(self):
         """Get configured temperature precision."""
-        return self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
+        val = self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return DEFAULT_TEMP_PRECISION
 
 class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
     """Project entity with global control: temperature, project HVAC mode, zone fan speed, and zone HVAC mode."""

@@ -7,6 +7,10 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ## [Unreleased]
 
+### Added
+
+- **Modern selectors in config and options flows.** Credentials use `TextSelector` with email and password types; configuration options use `NumberSelector` with units (seconds, cycles, °C) and sliders for temperatures, and `SelectSelector` for precision and HVAC modes.
+
 ### Changed
 
 - **Minimum request timeout lowered to 45 s** (was 50 s). 45 s is the value recommended by

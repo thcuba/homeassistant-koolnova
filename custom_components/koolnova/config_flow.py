@@ -4,10 +4,15 @@ from typing import Any, Dict, Optional
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.const import (
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 
 from .koolnova_api.client import KoolnovaAPIRestClient
 from .koolnova_api.exceptions import KoolnovaError
@@ -46,10 +51,21 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_EMAIL): str,
-        vol.Required(CONF_PASSWORD): str,
+        vol.Required(CONF_EMAIL): selector.TextSelector(
+            selector.TextSelectorConfig(
+                type=selector.TextSelectorType.EMAIL,
+                autocomplete="email",
+            )
+        ),
+        vol.Required(CONF_PASSWORD): selector.TextSelector(
+            selector.TextSelectorConfig(
+                type=selector.TextSelectorType.PASSWORD,
+                autocomplete="current-password",
+            )
+        ),
     }
 )
+
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Koolnova."""
@@ -63,7 +79,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="user",
-                data_schema=STEP_USER_DATA_SCHEMA
+                data_schema=STEP_USER_DATA_SCHEMA,
             )
 
         errors = {}
@@ -100,7 +116,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
-            errors=errors
+            errors=errors,
         )
 
     async def _validate_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -131,6 +147,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
 
+
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Koolnova."""
 
@@ -140,24 +157,35 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
-        return await self.async_step_user()
+        return await self.async_step_user(user_input)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
+            min_temp = float(user_input[CONF_MIN_TEMP])
+            max_temp = float(user_input[CONF_MAX_TEMP])
+
             # Validate ranges
-            if user_input[CONF_MIN_TEMP] >= user_input[CONF_MAX_TEMP]:
+            if min_temp >= max_temp:
                 return self.async_show_form(
                     step_id="user",
                     data_schema=self._get_options_schema(),
-                    errors={"base": "temp_range_invalid"}
+                    errors={"base": "temp_range_invalid"},
                 )
 
-            return self.async_create_entry(title="", data=user_input)
+            options = dict(user_input)
+            options[CONF_MIN_TEMP] = min_temp
+            options[CONF_MAX_TEMP] = max_temp
+            options[CONF_TEMP_PRECISION] = float(user_input[CONF_TEMP_PRECISION])
+            options[CONF_UPDATE_INTERVAL] = int(user_input[CONF_UPDATE_INTERVAL])
+            options[CONF_PROJECT_UPDATE_FREQUENCY] = int(user_input[CONF_PROJECT_UPDATE_FREQUENCY])
+            options[CONF_REQUEST_TIMEOUT] = int(user_input[CONF_REQUEST_TIMEOUT])
+
+            return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="user",
-            data_schema=self._get_options_schema()
+            data_schema=self._get_options_schema(),
         )
 
     def _get_options_schema(self):
@@ -166,49 +194,122 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         current_options = self.entry.options
 
         # Get current or default values
-        current_update_interval = current_options.get(CONF_UPDATE_INTERVAL, current_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
-        current_project_update_freq = current_options.get(CONF_PROJECT_UPDATE_FREQUENCY, current_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY))
-        current_project_modes = current_options.get(CONF_PROJECT_HVAC_MODES, current_data.get(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]))
-        current_zone_modes = current_options.get(CONF_ZONE_HVAC_MODES, current_data.get(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES]))
-        current_min_temp = current_options.get(CONF_MIN_TEMP, current_data.get(CONF_MIN_TEMP, DEFAULT_MIN_TEMP))
-        current_max_temp = current_options.get(CONF_MAX_TEMP, current_data.get(CONF_MAX_TEMP, DEFAULT_MAX_TEMP))
-        current_precision = current_options.get(CONF_TEMP_PRECISION, current_data.get(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION))
-        current_request_timeout = current_options.get(CONF_REQUEST_TIMEOUT, current_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT))
+        current_update_interval = current_options.get(
+            CONF_UPDATE_INTERVAL,
+            current_data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
+        )
+        current_project_update_freq = current_options.get(
+            CONF_PROJECT_UPDATE_FREQUENCY,
+            current_data.get(CONF_PROJECT_UPDATE_FREQUENCY, DEFAULT_PROJECT_UPDATE_FREQUENCY),
+        )
+        current_project_modes = current_options.get(
+            CONF_PROJECT_HVAC_MODES,
+            current_data.get(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]),
+        )
+        current_zone_modes = current_options.get(
+            CONF_ZONE_HVAC_MODES,
+            current_data.get(CONF_ZONE_HVAC_MODES, [mode.value for mode in DEFAULT_ZONE_HVAC_MODES]),
+        )
+        current_min_temp = current_options.get(
+            CONF_MIN_TEMP,
+            current_data.get(CONF_MIN_TEMP, DEFAULT_MIN_TEMP),
+        )
+        current_max_temp = current_options.get(
+            CONF_MAX_TEMP,
+            current_data.get(CONF_MAX_TEMP, DEFAULT_MAX_TEMP),
+        )
+        current_precision = current_options.get(
+            CONF_TEMP_PRECISION,
+            current_data.get(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION),
+        )
+        current_request_timeout = current_options.get(
+            CONF_REQUEST_TIMEOUT,
+            current_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
+        )
 
         return vol.Schema(
             {
-                vol.Required(CONF_UPDATE_INTERVAL, default=current_update_interval): vol.All(
-                    cv.positive_int,
-                    vol.Range(min=MIN_UPDATE_INTERVAL, max=MAX_UPDATE_INTERVAL)
+                vol.Required(CONF_UPDATE_INTERVAL, default=current_update_interval): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_UPDATE_INTERVAL,
+                        max=MAX_UPDATE_INTERVAL,
+                        step=1,
+                        unit_of_measurement=UnitOfTime.SECONDS,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
                 ),
-                vol.Required(CONF_PROJECT_UPDATE_FREQUENCY, default=current_project_update_freq): vol.All(
-                    cv.positive_int,
-                    vol.Range(min=MIN_PROJECT_UPDATE_FREQUENCY, max=MAX_PROJECT_UPDATE_FREQUENCY)
+                vol.Required(CONF_PROJECT_UPDATE_FREQUENCY, default=current_project_update_freq): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_PROJECT_UPDATE_FREQUENCY,
+                        max=MAX_PROJECT_UPDATE_FREQUENCY,
+                        step=1,
+                        unit_of_measurement="cycles",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
                 ),
-                vol.Required(CONF_PROJECT_HVAC_MODES, default=current_project_modes): cv.multi_select({
-                    mode.value: mode.value.title() for mode in AVAILABLE_HVAC_MODES
-                }),
-                vol.Required(CONF_ZONE_HVAC_MODES, default=current_zone_modes): cv.multi_select({
-                    mode.value: mode.value.title() for mode in AVAILABLE_HVAC_MODES
-                }),
-                vol.Required(CONF_MIN_TEMP, default=current_min_temp): vol.All(
-                    vol.Coerce(float),
-                    vol.Range(min=MIN_CONFIGURABLE_TEMP, max=MAX_CONFIGURABLE_TEMP)
+                vol.Required(CONF_PROJECT_HVAC_MODES, default=current_project_modes): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=mode.value, label=mode.value.title())
+                            for mode in AVAILABLE_HVAC_MODES
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
                 ),
-                vol.Required(CONF_MAX_TEMP, default=current_max_temp): vol.All(
-                    vol.Coerce(float),
-                    vol.Range(min=MIN_CONFIGURABLE_TEMP, max=MAX_CONFIGURABLE_TEMP)
+                vol.Required(CONF_ZONE_HVAC_MODES, default=current_zone_modes): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=mode.value, label=mode.value.title())
+                            for mode in AVAILABLE_HVAC_MODES
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
                 ),
-                vol.Required(CONF_TEMP_PRECISION, default=current_precision): vol.In(AVAILABLE_TEMP_PRECISIONS),
-                vol.Required(CONF_REQUEST_TIMEOUT, default=current_request_timeout): vol.All(
-                    cv.positive_int,
-                    vol.Range(min=MIN_REQUEST_TIMEOUT, max=MAX_REQUEST_TIMEOUT)
+                vol.Required(CONF_MIN_TEMP, default=float(current_min_temp)): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_CONFIGURABLE_TEMP,
+                        max=MAX_CONFIGURABLE_TEMP,
+                        step=0.5,
+                        unit_of_measurement=UnitOfTemperature.CELSIUS,
+                        mode=selector.NumberSelectorMode.SLIDER,
+                    )
+                ),
+                vol.Required(CONF_MAX_TEMP, default=float(current_max_temp)): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_CONFIGURABLE_TEMP,
+                        max=MAX_CONFIGURABLE_TEMP,
+                        step=0.5,
+                        unit_of_measurement=UnitOfTemperature.CELSIUS,
+                        mode=selector.NumberSelectorMode.SLIDER,
+                    )
+                ),
+                vol.Required(CONF_TEMP_PRECISION, default=str(current_precision)): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=str(p), label=f"{p} °C")
+                            for p in AVAILABLE_TEMP_PRECISIONS
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_REQUEST_TIMEOUT, default=current_request_timeout): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_REQUEST_TIMEOUT,
+                        max=MAX_REQUEST_TIMEOUT,
+                        step=1,
+                        unit_of_measurement=UnitOfTime.SECONDS,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
                 ),
             }
         )
 
+
 class CannotConnect(Exception):
     """Error to indicate we cannot connect."""
+
 
 class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
