@@ -10,7 +10,7 @@ API. Zones, the project as a whole, and (on legacy accounts) the physical hub ar
 Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 > ⚠️ Koolnova bans your IP automatically if their API receives more than one request every
-> 30 seconds, and also on repeated failed logins. The integration enforces that minimum interval
+> 45 seconds, and also on repeated failed logins. The integration enforces that minimum interval
 > and backs off after a failed login on purpose — do not force it lower.
 
 ## Features
