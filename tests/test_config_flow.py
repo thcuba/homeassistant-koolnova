@@ -9,167 +9,175 @@ from unittest.mock import MagicMock
 # Ensure project root and custom_components are in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tests.test_binary_sensor import _install_home_assistant_stubs
+try:
+    import voluptuous
+    HAVE_VOLUPTUOUS = True
+except ImportError:
+    HAVE_VOLUPTUOUS = False
 
-_install_home_assistant_stubs()
+if HAVE_VOLUPTUOUS:
+    from tests.test_binary_sensor import _install_home_assistant_stubs
 
-# Now install selector stubs
-from enum import StrEnum
+    _install_home_assistant_stubs()
 
-ha_const = sys.modules["homeassistant.const"]
-ha_const.CONF_EMAIL = "email"
-ha_const.CONF_PASSWORD = "placeholder"
+    # Now install selector stubs
+    from enum import StrEnum
 
-class UnitOfTemperature(StrEnum):
-    CELSIUS = "°C"
-    FAHRENHEIT = "°F"
+    ha_const = sys.modules["homeassistant.const"]
+    ha_const.CONF_EMAIL = "email"
+    ha_const.CONF_PASSWORD = "placeholder"
 
-class UnitOfTime(StrEnum):
-    SECONDS = "s"
-    MINUTES = "min"
-    HOURS = "h"
+    class UnitOfTemperature(StrEnum):
+        CELSIUS = "°C"
+        FAHRENHEIT = "°F"
 
-ha_const.UnitOfTemperature = UnitOfTemperature
-ha_const.UnitOfTime = UnitOfTime
+    class UnitOfTime(StrEnum):
+        SECONDS = "s"
+        MINUTES = "min"
+        HOURS = "h"
 
-core = sys.modules["homeassistant.core"]
-core.callback = lambda f: f
+    ha_const.UnitOfTemperature = UnitOfTemperature
+    ha_const.UnitOfTime = UnitOfTime
 
-def_mod = types.ModuleType("homeassistant.data_entry_flow")
-def_mod.FlowResult = dict
-sys.modules["homeassistant.data_entry_flow"] = def_mod
+    core = sys.modules["homeassistant.core"]
+    core.callback = lambda f: f
 
-ce = sys.modules["homeassistant.config_entries"]
+    def_mod = types.ModuleType("homeassistant.data_entry_flow")
+    def_mod.FlowResult = dict
+    sys.modules["homeassistant.data_entry_flow"] = def_mod
 
-class ConfigFlow:
-    def __init_subclass__(cls, domain=None, **kwargs):
-        super().__init_subclass__(**kwargs)
-        cls._domain = domain
+    ce = sys.modules["homeassistant.config_entries"]
 
-    def async_show_form(self, step_id=None, data_schema=None, errors=None):
-        return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
+    class ConfigFlow:
+        def __init_subclass__(cls, domain=None, **kwargs):
+            super().__init_subclass__(**kwargs)
+            cls._domain = domain
 
-    async def async_set_unique_id(self, uid):
-        self._unique_id = uid
+        def async_show_form(self, step_id=None, data_schema=None, errors=None):
+            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
 
-    def _abort_if_unique_id_configured(self):
-        pass
+        async def async_set_unique_id(self, uid):
+            self._unique_id = uid
 
-    def async_create_entry(self, title, data):
-        return {"type": "create_entry", "title": title, "data": data}
+        def _abort_if_unique_id_configured(self):
+            pass
 
-class OptionsFlow:
-    def async_show_form(self, step_id=None, data_schema=None, errors=None):
-        return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
+        def async_create_entry(self, title, data):
+            return {"type": "create_entry", "title": title, "data": data}
 
-    def async_create_entry(self, title, data):
-        return {"type": "create_entry", "title": title, "data": data}
+    class OptionsFlow:
+        def async_show_form(self, step_id=None, data_schema=None, errors=None):
+            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
 
-ce.ConfigFlow = ConfigFlow
-ce.OptionsFlow = OptionsFlow
+        def async_create_entry(self, title, data):
+            return {"type": "create_entry", "title": title, "data": data}
 
-sel = types.ModuleType("homeassistant.helpers.selector")
+    ce.ConfigFlow = ConfigFlow
+    ce.OptionsFlow = OptionsFlow
 
-class TextSelectorType(StrEnum):
-    TEXT = "text"
-    PASSWORD = "placeholder"
-    EMAIL = "email"
+    sel = types.ModuleType("homeassistant.helpers.selector")
 
-class NumberSelectorMode(StrEnum):
-    BOX = "box"
-    SLIDER = "slider"
+    class TextSelectorType(StrEnum):
+        TEXT = "text"
+        PASSWORD = "placeholder"
+        EMAIL = "email"
 
-class SelectSelectorMode(StrEnum):
-    DROPDOWN = "dropdown"
-    LIST = "list"
+    class NumberSelectorMode(StrEnum):
+        BOX = "box"
+        SLIDER = "slider"
 
-class TextSelectorConfig:
-    def __init__(self, type=TextSelectorType.TEXT, autocomplete=None, **kwargs):
-        self.type = type
-        self.autocomplete = autocomplete
+    class SelectSelectorMode(StrEnum):
+        DROPDOWN = "dropdown"
+        LIST = "list"
 
-class TextSelector:
-    def __init__(self, config=None):
-        self.config = config or TextSelectorConfig()
+    class TextSelectorConfig:
+        def __init__(self, type=TextSelectorType.TEXT, autocomplete=None, **kwargs):
+            self.type = type
+            self.autocomplete = autocomplete
 
-    def __call__(self, val):
-        return str(val)
+    class TextSelector:
+        def __init__(self, config=None):
+            self.config = config or TextSelectorConfig()
 
-class NumberSelectorConfig:
-    def __init__(self, min=None, max=None, step=None, unit_of_measurement=None, mode=None, **kwargs):
-        self.min = min
-        self.max = max
-        self.step = step
-        self.unit_of_measurement = unit_of_measurement
-        self.mode = mode
+        def __call__(self, val):
+            return str(val)
 
-class NumberSelector:
-    def __init__(self, config=None):
-        self.config = config or NumberSelectorConfig()
+    class NumberSelectorConfig:
+        def __init__(self, min=None, max=None, step=None, unit_of_measurement=None, mode=None, **kwargs):
+            self.min = min
+            self.max = max
+            self.step = step
+            self.unit_of_measurement = unit_of_measurement
+            self.mode = mode
 
-    def __call__(self, val):
-        return float(val)
+    class NumberSelector:
+        def __init__(self, config=None):
+            self.config = config or NumberSelectorConfig()
 
-class SelectOptionDict(dict):
-    def __init__(self, value, label):
-        super().__init__(value=value, label=label)
-        self.value = value
-        self.label = label
+        def __call__(self, val):
+            return float(val)
 
-class SelectSelectorConfig:
-    def __init__(self, options=None, multiple=False, mode=None, **kwargs):
-        self.options = options or []
-        self.multiple = multiple
-        self.mode = mode
+    class SelectOptionDict(dict):
+        def __init__(self, value, label):
+            super().__init__(value=value, label=label)
+            self.value = value
+            self.label = label
 
-class SelectSelector:
-    def __init__(self, config=None):
-        self.config = config or SelectSelectorConfig()
+    class SelectSelectorConfig:
+        def __init__(self, options=None, multiple=False, mode=None, **kwargs):
+            self.options = options or []
+            self.multiple = multiple
+            self.mode = mode
 
-    def __call__(self, val):
-        return val
+    class SelectSelector:
+        def __init__(self, config=None):
+            self.config = config or SelectSelectorConfig()
 
-sel.TextSelector = TextSelector
-sel.TextSelectorConfig = TextSelectorConfig
-sel.TextSelectorType = TextSelectorType
-sel.NumberSelector = NumberSelector
-sel.NumberSelectorConfig = NumberSelectorConfig
-sel.NumberSelectorMode = NumberSelectorMode
-sel.SelectSelector = SelectSelector
-sel.SelectSelectorConfig = SelectSelectorConfig
-sel.SelectSelectorMode = SelectSelectorMode
-sel.SelectOptionDict = SelectOptionDict
+        def __call__(self, val):
+            return val
 
-sys.modules["homeassistant.helpers.selector"] = sel
-helpers = sys.modules["homeassistant.helpers"]
-helpers.selector = sel
+    sel.TextSelector = TextSelector
+    sel.TextSelectorConfig = TextSelectorConfig
+    sel.TextSelectorType = TextSelectorType
+    sel.NumberSelector = NumberSelector
+    sel.NumberSelectorConfig = NumberSelectorConfig
+    sel.NumberSelectorMode = NumberSelectorMode
+    sel.SelectSelector = SelectSelector
+    sel.SelectSelectorConfig = SelectSelectorConfig
+    sel.SelectSelectorMode = SelectSelectorMode
+    sel.SelectOptionDict = SelectOptionDict
 
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.helpers import selector
+    sys.modules["homeassistant.helpers.selector"] = sel
+    helpers = sys.modules["homeassistant.helpers"]
+    helpers.selector = sel
 
-from custom_components.koolnova.config_flow import (
-    STEP_USER_DATA_SCHEMA,
-    ConfigFlow,
-    OptionsFlowHandler,
-)
-from custom_components.koolnova.const import (
-    CONF_MAX_TEMP,
-    CONF_MIN_TEMP,
-    CONF_PROJECT_HVAC_MODES,
-    CONF_PROJECT_UPDATE_FREQUENCY,
-    CONF_REQUEST_TIMEOUT,
-    CONF_TEMP_PRECISION,
-    CONF_UPDATE_INTERVAL,
-    CONF_ZONE_HVAC_MODES,
-    MAX_CONFIGURABLE_TEMP,
-    MAX_REQUEST_TIMEOUT,
-    MAX_UPDATE_INTERVAL,
-    MIN_CONFIGURABLE_TEMP,
-    MIN_REQUEST_TIMEOUT,
-    MIN_UPDATE_INTERVAL,
-)
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+    from homeassistant.helpers import selector
+
+    from custom_components.koolnova.config_flow import (
+        STEP_USER_DATA_SCHEMA,
+        ConfigFlow,
+        OptionsFlowHandler,
+    )
+    from custom_components.koolnova.const import (
+        CONF_MAX_TEMP,
+        CONF_MIN_TEMP,
+        CONF_PROJECT_HVAC_MODES,
+        CONF_PROJECT_UPDATE_FREQUENCY,
+        CONF_REQUEST_TIMEOUT,
+        CONF_TEMP_PRECISION,
+        CONF_UPDATE_INTERVAL,
+        CONF_ZONE_HVAC_MODES,
+        MAX_CONFIGURABLE_TEMP,
+        MAX_REQUEST_TIMEOUT,
+        MAX_UPDATE_INTERVAL,
+        MIN_CONFIGURABLE_TEMP,
+        MIN_REQUEST_TIMEOUT,
+        MIN_UPDATE_INTERVAL,
+    )
 
 
+@unittest.skipUnless(HAVE_VOLUPTUOUS, "needs voluptuous (Home Assistant environment)")
 class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
     """Test suite ensuring ConfigFlow and OptionsFlow use modern selectors."""
 
