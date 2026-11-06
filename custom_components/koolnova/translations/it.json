@@ -25,14 +25,14 @@
         "title": "Configura opzioni Koolnova",
         "description": "Personalizza il comportamento e i limiti dell'integrazione",
         "data": {
-          "update_interval": "Intervallo di aggiornamento (secondi)",
-          "project_update_frequency": "Frequenza aggiornamento progetto (cicli)",
+          "update_interval": "Intervallo di aggiornamento",
+          "project_update_frequency": "Frequenza aggiornamento progetto",
           "project_hvac_modes": "Modalità HVAC del progetto",
           "zone_hvac_modes": "Modalità HVAC delle zone",
           "min_temp": "Temperatura minima",
           "max_temp": "Temperatura massima",
           "temp_precision": "Precisione temperatura",
-          "request_timeout": "Timeout richiesta API (secondi)"
+          "request_timeout": "Timeout richiesta API"
         }
       }
     },
