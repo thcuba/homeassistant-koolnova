@@ -72,6 +72,17 @@ class LoginPayloadTest(unittest.TestCase):
 
         self.assertEqual(kwargs["json"]["email"], "real@example.com")
 
+    def test_a_non_email_username_is_sent_under_username(self):
+        """Only an email-shaped username is promoted to 'email'.
+
+        This is the edge the v1.3.0 regression lived on: a bare username must
+        still travel as 'username', otherwise the payload field drifts.
+        """
+        _, kwargs = self._login("someone", "secret")
+
+        self.assertEqual(kwargs["json"], {"username": "someone", "password": "secret"})
+        self.assertNotIn("email", kwargs["json"])
+
     def test_posts_to_the_v2_login_endpoint(self):
         args, _ = self._login("user@example.com", "secret")
 
@@ -289,6 +300,78 @@ class RequestTimeoutTest(unittest.TestCase):
         api_timeout = request.call_args_list[1].kwargs["timeout"]
         self.assertEqual(auth_timeout, 45)
         self.assertEqual(api_timeout, 45)
+
+
+class AuthRetryTest(unittest.TestCase):
+    """The login call has its own retry loop, separate from rest_request.
+
+    The Koolnova cloud answers 429 ("Expected available in 32 seconds") and
+    intermittent 5xx during login, and the network drops mid-authentication.
+    Every branch of that backoff was untested: a regression there locks the
+    user out of the integration entirely, with no partial functionality.
+    """
+
+    def _login(self, side_effect):
+        """Build a session against a scripted sequence of responses."""
+        with patch("koolnova_api.session.time.sleep") as sleep, patch(
+            "requests.Session.request", side_effect=side_effect
+        ) as request:
+            session = KoolnovaClientSession("user@example.com", "secret")
+        return session, request, sleep
+
+    def test_retries_after_a_rate_limit_with_retry_after(self):
+        session, request, sleep = self._login(
+            [_status_response(429, headers={"Retry-After": "0"}), _ok_response()]
+        )
+
+        self.assertEqual(request.call_count, 2)
+        self.assertTrue(sleep.called)
+        self.assertEqual(session.bearerToken, "tok")
+
+    def test_retries_after_a_rate_limit_without_retry_after(self):
+        """No header: the code falls back to 32s for the first attempt."""
+        session, request, sleep = self._login([_status_response(429), _ok_response()])
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(sleep.call_args.args[0], 32.0)
+        self.assertEqual(session.bearerToken, "tok")
+
+    def test_retries_after_a_server_error(self):
+        session, request, sleep = self._login([_status_response(503), _ok_response()])
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(sleep.call_args.args[0], 2.0)
+        self.assertEqual(session.bearerToken, "tok")
+
+    def test_retries_after_a_network_error(self):
+        session, request, sleep = self._login([ConnectionError("boom"), _ok_response()])
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(sleep.call_args.args[0], 2.0)
+        self.assertEqual(session.bearerToken, "tok")
+
+    def test_raises_when_no_attempt_gets_a_response(self):
+        with self.assertRaises(RuntimeError) as caught:
+            self._login([ConnectionError("boom")] * 5)
+
+        self.assertIn("no response", str(caught.exception))
+
+    def test_gives_up_after_a_persistent_rate_limit(self):
+        """Five 429s in a row must stop retrying instead of looping forever."""
+        with self.assertRaises(RuntimeError) as caught:
+            self._login([_status_response(429)] * 5)
+
+        self.assertIn("Authentication failed", str(caught.exception))
+
+    def test_a_malformed_retry_after_falls_back_to_the_backoff(self):
+        """A non-numeric Retry-After must not crash the login."""
+        session, request, sleep = self._login(
+            [_status_response(429, headers={"Retry-After": "soon"}), _ok_response()]
+        )
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(sleep.call_args.args[0], 2.0)
+        self.assertEqual(session.bearerToken, "tok")
 
 
 if __name__ == "__main__":

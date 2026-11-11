@@ -164,6 +164,20 @@ class GetSensorsTest(ClientTestCase):
         with self.assertRaises(KoolnovaError):
             self.client.get_sensors()
 
+    def test_raises_when_the_response_carries_no_data_at_all(self):
+        """An empty body must raise the documented error, not a KeyError.
+
+        The cloud occasionally answers 200 with a body of ``{}`` when the
+        account has no topics yet. `get_sensors` guards that case separately
+        from the empty-`data` case, so it needs its own test.
+        """
+        self._respond({})
+
+        with self.assertRaises(KoolnovaError) as caught:
+            self.client.get_sensors()
+
+        self.assertIn("No data received", str(caught.exception))
+
 
 class UpdateTest(ClientTestCase):
     def test_updating_a_sensor_uses_patch(self):
@@ -395,6 +409,12 @@ class HubMethodsTest(ClientTestCase):
         self.assertEqual(self.client.get_notifications(), [{"id": 5}])
         args, _ = self.session.rest_request.call_args
         self.assertEqual(args, ("GET", "notifications/"))
+
+    def test_get_notifications_returns_empty_when_there_is_no_data(self):
+        """A body without 'data' means 'no notifications', not a crash."""
+        self._respond({})
+
+        self.assertEqual(self.client.get_notifications(), [])
 
 
 class SetRequestTimeoutTest(unittest.TestCase):
