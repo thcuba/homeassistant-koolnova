@@ -15,8 +15,8 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 ## Features
 
-- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / OFF), with the project heat source — air or
-  underfloor — selectable in the options, because the two circuits use different mode codes
+- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / OFF), with the project heat source — air,
+  underfloor or both — selectable in the options, because the app lists those circuits separately
 - 🌡️ **Target temperature** per zone and global median across zones
 - 🌬️ **Fan speed** per zone (LOW / MEDIUM / HIGH / AUTO)
 - 🏠 **Global project control** (mode, ECO, stop) on a single `climate` entity
@@ -89,12 +89,14 @@ Options available afterwards through *Configure*:
 | Temperature range | 21–27 °C | 15–35 °C |
 | Temperature precision | 0.5 °C | 0.5 or 1 °C |
 | API request timeout | 50 s | 45–300 s |
-| Project heat source | air | air / floor |
+| Project heat source | air | air / floor / both |
 
-`Project heat source` tells the integration which circuit your installation uses. The cloud encodes
-"hot air" and "heat floor" with two different codes while Home Assistant only has one `heat`, so the
-option decides which code is sent. Leave it on `air` unless you heat through an underfloor circuit —
-see [docs/API.md](docs/API.md#project-mode-mode).
+`Project heat source` tells the integration which circuit(s) your installation drives. The app lists
+the circuits as separate entries — cool air, hot air, heat floor, heat floor + hot air, cool floor +
+cool air — while Home Assistant only has one `heat` and one `cool`, so this option decides which entry
+is sent. Pick `air` for ducted units only (the default), `floor` for an underfloor circuit alone
+(heating only: the app has no cool-floor-only entry), or `both` when the two work together — see
+[docs/API.md](docs/API.md#project-mode-mode).
 
 ## Documentation
 
