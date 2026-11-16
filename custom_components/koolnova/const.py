@@ -65,20 +65,18 @@ CONF_TEMP_PRECISION = "temp_precision"
 CONF_REQUEST_TIMEOUT = "request_timeout"
 CONF_HEAT_SOURCE = "heat_source"
 
-# Project "mode" codes, as the official app lists them:
-#   1 cool air · 2 hot air · 3 heat floor · 4 heat floor + hot air
-#   5 cool floor + cool air · 6 auto
-# There is no "off" code in this list: the installation is switched off with the
-# separate `is_stop` flag of the project payload, not with a mode.
-# Codes 3, 4, 5 and 6 are reported by the user and not verified against the cloud
-# yet, so the raw mode is exposed as the `project_mode_raw` attribute and an
-# unmapped code logs a warning instead of being silently read as off.
+# Project "mode" codes. Confirmed on a real installation:
+#   1 cool air · 2 hot air · 3 heat floor · 5 cool floor + cool air
+#   6 heat floor + hot air
+# Code 4 shows up in the app's list but has not been identified yet, so it is left
+# unmapped on purpose: an unmapped code logs a warning carrying its value instead
+# of being silently read as off.
+# There is neither an "auto" nor an "off" code: stopping is the `is_stop` flag.
 KOOLNOVA_MODE_COOL_AIR = "1"
 KOOLNOVA_MODE_HOT_AIR = "2"
 KOOLNOVA_MODE_HEAT_FLOOR = "3"
-KOOLNOVA_MODE_HEAT_BOTH = "4"
 KOOLNOVA_MODE_COOL_BOTH = "5"
-KOOLNOVA_MODE_AUTO = "6"
+KOOLNOVA_MODE_HEAT_BOTH = "6"
 
 # Payload key used to switch the whole installation off.
 KOOLNOVA_PROJECT_STOP_KEY = "is_stop"
@@ -90,23 +88,20 @@ KOOLNOVA_TO_HVAC_MODE = {
     KOOLNOVA_MODE_COOL_AIR: HVACMode.COOL,
     KOOLNOVA_MODE_HOT_AIR: HVACMode.HEAT,
     KOOLNOVA_MODE_HEAT_FLOOR: HVACMode.HEAT,
-    KOOLNOVA_MODE_HEAT_BOTH: HVACMode.HEAT,
     KOOLNOVA_MODE_COOL_BOTH: HVACMode.COOL,
-    KOOLNOVA_MODE_AUTO: HVACMode.AUTO,
+    KOOLNOVA_MODE_HEAT_BOTH: HVACMode.HEAT,
 }
 
-# Which circuit(s) each code drives. "auto" decides on its own and "off" drives
-# nothing, so both are absent on purpose.
+# Which circuit(s) each code drives.
 KOOLNOVA_MODE_TO_HEAT_SOURCE = {
     KOOLNOVA_MODE_COOL_AIR: HEAT_SOURCE_AIR,
     KOOLNOVA_MODE_HOT_AIR: HEAT_SOURCE_AIR,
     KOOLNOVA_MODE_HEAT_FLOOR: HEAT_SOURCE_FLOOR,
-    KOOLNOVA_MODE_HEAT_BOTH: HEAT_SOURCE_BOTH,
     KOOLNOVA_MODE_COOL_BOTH: HEAT_SOURCE_BOTH,
+    KOOLNOVA_MODE_HEAT_BOTH: HEAT_SOURCE_BOTH,
 }
 
 # Code to send to the cloud, keyed by (Home Assistant mode, heat source).
-# "auto" ignores the circuit, so it carries the same code for every source.
 # (cool, floor) is absent on purpose: the app has no cool-floor-only entry, so that
 # combination must fail loudly instead of falling back to another circuit.
 KOOLNOVA_PROJECT_MODE_CODE = {
@@ -115,9 +110,6 @@ KOOLNOVA_PROJECT_MODE_CODE = {
     (HVACMode.HEAT, HEAT_SOURCE_AIR): KOOLNOVA_MODE_HOT_AIR,
     (HVACMode.HEAT, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_HEAT_FLOOR,
     (HVACMode.HEAT, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_HEAT_BOTH,
-    (HVACMode.AUTO, HEAT_SOURCE_AIR): KOOLNOVA_MODE_AUTO,
-    (HVACMode.AUTO, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_AUTO,
-    (HVACMode.AUTO, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_AUTO,
 }
 
 # Status mappings for sensors/zones - only the forward definition is written by hand

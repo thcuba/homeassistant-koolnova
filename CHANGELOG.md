@@ -22,11 +22,13 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   app reads as **hot air**: switching the installation off started the heating (issue #96). There is
   no "off" code at all — the installation stops through the `is_stop` flag — so the entity now reads
   that flag first, sets it to stop the project, and clears it again when a mode is requested.
-- **The mode table now matches the app:** `1 cool air · 2 hot air · 3 heat floor · 4 heat floor +
-  hot air · 5 cool floor + cool air · 6 auto`. The code to send is chosen by `(mode, heat source)`
-  because three codes collapse onto `heat` and two onto `cool`, while `auto` ignores the circuit.
-  Cooling on the underfloor circuit alone has no entry and fails loudly instead of silently picking
-  another circuit.
+- **The mode table now matches the app:** `1 cool air · 2 hot air · 3 heat floor · 5 cool floor +
+  cool air · 6 heat floor + hot air`. The code to send is chosen by `(mode, heat source)` because
+  three codes collapse onto `heat` and two onto `cool`. Cooling on the underfloor circuit alone has no
+  entry and fails loudly instead of silently picking another circuit.
+- **Code `6` is "heat floor + hot air", not "auto".** Verified on a real installation: selecting the
+  mode that looked like auto made the app report the combined heating. There is no auto entry at all,
+  and code `4` remains unidentified, so it is left unmapped and logged with its raw value.
 - **An unmapped project mode logs a warning with its raw value** instead of being silently reported
   as `off`.
 

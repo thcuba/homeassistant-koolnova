@@ -194,19 +194,23 @@ separate entries, so "heat" and "cool" on their own are ambiguous.
 | `"1"` | `cool` | cool **air** only (ducted units) |
 | `"2"` | `heat` | **hot air** only (ducted units) |
 | `"3"` | `heat` | **heat floor** only (underfloor circuit) |
-| `"4"` | `heat` | **heat floor + hot air** together |
+| `"4"` | — | *not identified yet: deliberately left unmapped* |
 | `"5"` | `cool` | **cool floor + cool air** together |
-| `"6"` | `auto` | **auto** — the cloud decides, the circuit is not involved |
+| `"6"` | `heat` | **heat floor + hot air** together |
 
 Two consequences:
 
 - The mapping is **not invertible** — three codes collapse onto `heat` and two onto `cool` — so the
   code to send also depends on the configured heat source. `KOOLNOVA_PROJECT_MODE_CODE` in `const.py`
-  is keyed by `(hvac mode, heat source)`, the source being `air`, `floor` or `both`. `auto` ignores
-  the circuit and carries code `6` for every source.
-- **There is no "off" code.** The installation is stopped by setting the separate `is_stop` flag of
-  the project payload: off is a flag, not a mode. A stopped project keeps reporting whatever `mode`
-  was set before, which is why the entity reads `is_stop` first.
+  is keyed by `(hvac mode, heat source)`, the source being `air`, `floor` or `both`.
+- **There is neither an "auto" nor an "off" code.** Code `6` looks like auto but it is the "heat
+  floor + hot air" combination; the installation is stopped by setting the separate `is_stop` flag,
+  because off is a flag and not a mode. A stopped project keeps reporting whatever `mode` was set
+  before, which is why the entity reads `is_stop` first.
+
+Code `4` has not been identified: it appears in the app's list, but no observation ties it to a mode
+yet. It is left out of the table on purpose, so it is logged with its raw value instead of being
+silently translated into something plausible.
 
 There is no **cool-floor-only** entry either: cooling exists on air (`1`) or on both circuits (`5`),
 never on the underfloor circuit alone. That combination fails loudly instead of silently falling back
