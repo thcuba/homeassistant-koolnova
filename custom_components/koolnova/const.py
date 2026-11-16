@@ -45,12 +45,13 @@ DEFAULT_TEMP_PRECISION = 0.5
 AVAILABLE_HVAC_MODES = [HVACMode.COOL, HVACMode.HEAT, HVACMode.OFF, HVACMode.AUTO]
 AVAILABLE_TEMP_PRECISIONS = [0.5, 1.0]
 
-# Heat source for the project circuit. The Koolnova cloud drives two independent
-# circuits (air and underfloor) and encodes the four combinations - cool/hot times
-# air/floor - with four distinct "mode" codes, so "heat" alone is ambiguous.
+# Heat source for the project circuit. The Koolnova cloud drives two circuits — air
+# and underfloor — and the app lists their combinations as separate entries, so
+# "heat" and "cool" on their own are ambiguous.
 HEAT_SOURCE_AIR = "air"
 HEAT_SOURCE_FLOOR = "floor"
-AVAILABLE_HEAT_SOURCES = [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR]
+HEAT_SOURCE_BOTH = "both"
+AVAILABLE_HEAT_SOURCES = [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR, HEAT_SOURCE_BOTH]
 DEFAULT_HEAT_SOURCE = HEAT_SOURCE_AIR
 
 # Configuration keys
@@ -64,47 +65,59 @@ CONF_TEMP_PRECISION = "temp_precision"
 CONF_REQUEST_TIMEOUT = "request_timeout"
 CONF_HEAT_SOURCE = "heat_source"
 
-# Project "mode" codes, as the official app labels them:
-#   1 cool air · 2 hot air · 3 off · 4 heat floor · 5 cool floor
-# Codes 1, 2, 4 and 5 are the four entries the app offers. The value used for
-# "off" is reported as 3, inferred from the gap in that sequence: it has not been
-# confirmed against the cloud yet, so the raw mode is exposed in the entity
-# attributes as `project_mode_raw` and an unmapped code logs a warning instead of
-# being silently treated as off.
+# Project "mode" codes, as the official app lists them:
+#   1 cool air · 2 hot air · 3 heat floor · 4 heat floor + hot air
+#   5 cool floor + cool air · 6 auto
+# There is no "off" code in this list: the installation is switched off with the
+# separate `is_stop` flag of the project payload, not with a mode.
+# Codes 3, 4, 5 and 6 are reported by the user and not verified against the cloud
+# yet, so the raw mode is exposed as the `project_mode_raw` attribute and an
+# unmapped code logs a warning instead of being silently read as off.
 KOOLNOVA_MODE_COOL_AIR = "1"
 KOOLNOVA_MODE_HOT_AIR = "2"
-KOOLNOVA_MODE_OFF = "3"
-KOOLNOVA_MODE_HEAT_FLOOR = "4"
-KOOLNOVA_MODE_COOL_FLOOR = "5"
+KOOLNOVA_MODE_HEAT_FLOOR = "3"
+KOOLNOVA_MODE_HEAT_BOTH = "4"
+KOOLNOVA_MODE_COOL_BOTH = "5"
+KOOLNOVA_MODE_AUTO = "6"
 
-# Forward mapping: what each code means. Unlike the zone statuses this is NOT
-# invertible, because two codes collapse onto each of cool and heat. Going the
-# other way requires KOOLNOVA_PROJECT_MODE_CODE, since the code to send also
-# depends on the configured heat source.
+# Payload key used to switch the whole installation off.
+KOOLNOVA_PROJECT_STOP_KEY = "is_stop"
+
+# Forward mapping: what each code means. It is NOT invertible, because several
+# codes collapse onto heat and onto cool: writing requires
+# KOOLNOVA_PROJECT_MODE_CODE, keyed by (hvac mode, heat source).
 KOOLNOVA_TO_HVAC_MODE = {
     KOOLNOVA_MODE_COOL_AIR: HVACMode.COOL,
     KOOLNOVA_MODE_HOT_AIR: HVACMode.HEAT,
-    KOOLNOVA_MODE_OFF: HVACMode.OFF,
     KOOLNOVA_MODE_HEAT_FLOOR: HVACMode.HEAT,
-    KOOLNOVA_MODE_COOL_FLOOR: HVACMode.COOL,
+    KOOLNOVA_MODE_HEAT_BOTH: HVACMode.HEAT,
+    KOOLNOVA_MODE_COOL_BOTH: HVACMode.COOL,
+    KOOLNOVA_MODE_AUTO: HVACMode.AUTO,
 }
 
-# Which circuit each code drives. "off" has no circuit, so it is absent on purpose.
+# Which circuit(s) each code drives. "auto" decides on its own and "off" drives
+# nothing, so both are absent on purpose.
 KOOLNOVA_MODE_TO_HEAT_SOURCE = {
     KOOLNOVA_MODE_COOL_AIR: HEAT_SOURCE_AIR,
     KOOLNOVA_MODE_HOT_AIR: HEAT_SOURCE_AIR,
     KOOLNOVA_MODE_HEAT_FLOOR: HEAT_SOURCE_FLOOR,
-    KOOLNOVA_MODE_COOL_FLOOR: HEAT_SOURCE_FLOOR,
+    KOOLNOVA_MODE_HEAT_BOTH: HEAT_SOURCE_BOTH,
+    KOOLNOVA_MODE_COOL_BOTH: HEAT_SOURCE_BOTH,
 }
 
 # Code to send to the cloud, keyed by (Home Assistant mode, heat source).
+# "auto" ignores the circuit, so it carries the same code for every source.
+# (cool, floor) is absent on purpose: the app has no cool-floor-only entry, so that
+# combination must fail loudly instead of falling back to another circuit.
 KOOLNOVA_PROJECT_MODE_CODE = {
     (HVACMode.COOL, HEAT_SOURCE_AIR): KOOLNOVA_MODE_COOL_AIR,
-    (HVACMode.COOL, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_COOL_FLOOR,
+    (HVACMode.COOL, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_COOL_BOTH,
     (HVACMode.HEAT, HEAT_SOURCE_AIR): KOOLNOVA_MODE_HOT_AIR,
     (HVACMode.HEAT, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_HEAT_FLOOR,
-    (HVACMode.OFF, HEAT_SOURCE_AIR): KOOLNOVA_MODE_OFF,
-    (HVACMode.OFF, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_OFF,
+    (HVACMode.HEAT, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_HEAT_BOTH,
+    (HVACMode.AUTO, HEAT_SOURCE_AIR): KOOLNOVA_MODE_AUTO,
+    (HVACMode.AUTO, HEAT_SOURCE_FLOOR): KOOLNOVA_MODE_AUTO,
+    (HVACMode.AUTO, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_AUTO,
 }
 
 # Status mappings for sensors/zones - only the forward definition is written by hand

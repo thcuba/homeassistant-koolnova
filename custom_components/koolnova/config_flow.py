@@ -49,6 +49,7 @@ from .const import (
     DEFAULT_HEAT_SOURCE,
     HEAT_SOURCE_AIR,
     HEAT_SOURCE_FLOOR,
+    HEAT_SOURCE_BOTH,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -315,10 +316,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             selector.SelectOptionDict(
-                                value=HEAT_SOURCE_AIR, label="Air (ducted units)"
+                                value=HEAT_SOURCE_AIR, label="Air only (ducted units)"
                             ),
                             selector.SelectOptionDict(
-                                value=HEAT_SOURCE_FLOOR, label="Underfloor circuit"
+                                value=HEAT_SOURCE_FLOOR, label="Underfloor only (heat only)"
+                            ),
+                            selector.SelectOptionDict(
+                                value=HEAT_SOURCE_BOTH, label="Air + underfloor together"
                             ),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,

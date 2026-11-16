@@ -49,19 +49,23 @@ If it persists, delete the integration from the UI, restart HA and add it again.
 
 ## "Set to heat but nothing blows hot air"
 
-The cloud has **separate circuits** for air and underfloor heating and uses a different mode code for
-each: `2` is hot air, `4` is heat floor. Home Assistant only knows one `heat`, so the integration
-sends the code matching the **Project heat source** option (see
+The cloud drives **two circuits** — air and underfloor — and the app offers their combinations as
+separate entries: `2` is hot air, `3` is heat floor, `4` is heat floor + hot air. Home Assistant has
+only one `heat`, so the integration sends the entry matching the **Project heat source** option (see
 [API.md](API.md#project-mode-mode)).
 
 If the units do not blow hot air:
 
-1. look at the `heat_source` attribute on the project entity: it reports the circuit the cloud says
+1. look at the `heat_source` attribute on the project entity: it reports which circuit the cloud says
    is active;
 2. set **Settings → Devices & services → Koolnova → Configure → Project heat source** to `air` if your
-   installation has ducted units only (default is already `air`);
+   installation has ducted units only (default is already `air`); choose `both` if air and floor work
+   together;
 3. if it still does not match, compare `project_mode_raw` with what the official app shows and report
-   both values — the code table is still incomplete for the "off" entry.
+   both values — the table comes from the app and is not verified against the cloud yet.
+
+If the installation cannot be switched off, check the `is_stop` attribute: stopping is a flag in the
+project payload, not a mode, so a stopped project still reports the last `mode` it had.
 
 Zone entities are not affected: zone modes use a different encoding (`status`: `00` cool, `01` heat,
 `02` off, `03` auto).

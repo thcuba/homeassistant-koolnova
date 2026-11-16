@@ -171,6 +171,7 @@ if HAVE_VOLUPTUOUS:
         CONF_ZONE_HVAC_MODES,
         HEAT_SOURCE_AIR,
         HEAT_SOURCE_FLOOR,
+        HEAT_SOURCE_BOTH,
         MAX_CONFIGURABLE_TEMP,
         MAX_REQUEST_TIMEOUT,
         MAX_UPDATE_INTERVAL,
@@ -271,7 +272,7 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsInstance(source_sel, selector.SelectSelector)
         values = [option["value"] for option in source_sel.config.options]
-        self.assertEqual(values, [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR])
+        self.assertEqual(values, [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR, HEAT_SOURCE_BOTH])
         self.assertFalse(source_sel.config.multiple)
 
     def test_options_schema_keeps_the_configured_heat_source(self):

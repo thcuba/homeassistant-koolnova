@@ -27,6 +27,7 @@ from .const import (
     KOOLNOVA_TO_HVAC_MODE,
     KOOLNOVA_MODE_TO_HEAT_SOURCE,
     KOOLNOVA_PROJECT_MODE_CODE,
+    KOOLNOVA_PROJECT_STOP_KEY,
     AVAILABLE_HEAT_SOURCES,
     CONF_HEAT_SOURCE,
     DEFAULT_HEAT_SOURCE,
@@ -229,6 +230,10 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
     def hvac_mode(self):
         """Return current project HVAC mode."""
         self._update_project_data()
+        if self._project.get(KOOLNOVA_PROJECT_STOP_KEY):
+            # Stopping is a flag, not a mode: whatever code is left in `Mode`, a
+            # stopped installation is off.
+            return HVACMode.OFF
         raw_mode = self._project.get("Mode")
         current_mode = KOOLNOVA_TO_HVAC_MODE.get(raw_mode)
         if current_mode is None:
@@ -366,27 +371,40 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             _LOGGER.error("Unsupported project HVAC mode: %s. Available: %s", hvac_mode, self.hvac_modes)
             return
 
+        if hvac_mode == HVACMode.OFF:
+            # The app has no "off" entry among the mode codes: stopping the
+            # installation is a separate flag in the project payload.
+            await self._async_send_project_payload({KOOLNOVA_PROJECT_STOP_KEY: True}, "off")
+            return
+
         heat_source = self._get_heat_source()
         koolnova_mode = KOOLNOVA_PROJECT_MODE_CODE.get((hvac_mode, heat_source))
         if not koolnova_mode:
             _LOGGER.error(
-                "No Koolnova code for HVAC mode %s with heat source %s: the cloud only "
-                "exposes cool/heat on the air and underfloor circuits",
+                "No Koolnova code for HVAC mode %s with heat source %s. The app offers: "
+                "1 cool air, 2 hot air, 3 heat floor, 4 heat floor + hot air, "
+                "5 cool floor + cool air, 6 auto — so cooling is not available on "
+                "the underfloor circuit alone",
                 hvac_mode,
                 heat_source,
             )
             return
 
         body = {"mode": koolnova_mode}
+        if self._project.get(KOOLNOVA_PROJECT_STOP_KEY):
+            # Coming back from a stop: clear the flag in the same request, otherwise
+            # the installation would stay stopped with the new mode merely set.
+            body[KOOLNOVA_PROJECT_STOP_KEY] = False
 
+        await self._async_send_project_payload(
+            body, f"{hvac_mode} (heat source {heat_source}, code {koolnova_mode})"
+        )
+
+    async def _async_send_project_payload(self, body, description):
+        """Send a project payload to the cloud and surface any failure."""
         try:
             await self.coordinator.async_update_project_data(self._project["Topic_id"], body)
-            _LOGGER.info(
-                "Project mode updated to %s (heat source %s, code %s)",
-                hvac_mode,
-                heat_source,
-                koolnova_mode,
-            )
+            _LOGGER.info("Project mode updated to %s: %s", description, body)
         except Exception as err:
             _LOGGER.error("Error updating project mode: %s", err)
             async_create(
