@@ -160,6 +160,7 @@ if HAVE_VOLUPTUOUS:
         OptionsFlowHandler,
     )
     from custom_components.koolnova.const import (
+        CONF_HEAT_SOURCE,
         CONF_MAX_TEMP,
         CONF_MIN_TEMP,
         CONF_PROJECT_HVAC_MODES,
@@ -168,6 +169,8 @@ if HAVE_VOLUPTUOUS:
         CONF_TEMP_PRECISION,
         CONF_UPDATE_INTERVAL,
         CONF_ZONE_HVAC_MODES,
+        HEAT_SOURCE_AIR,
+        HEAT_SOURCE_FLOOR,
         MAX_CONFIGURABLE_TEMP,
         MAX_REQUEST_TIMEOUT,
         MAX_UPDATE_INTERVAL,
@@ -256,6 +259,41 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(timeout_sel.config.max, MAX_REQUEST_TIMEOUT)
         self.assertEqual(timeout_sel.config.unit_of_measurement, "s")
 
+    def test_options_schema_exposes_the_heat_source(self):
+        """The project circuit is either air or underfloor, so the choice is needed."""
+        entry = MagicMock()
+        entry.data = {}
+        entry.options = {}
+
+        handler = OptionsFlowHandler(entry)
+        schema = handler._get_options_schema()
+        source_sel = schema.schema[CONF_HEAT_SOURCE]
+
+        self.assertIsInstance(source_sel, selector.SelectSelector)
+        values = [option["value"] for option in source_sel.config.options]
+        self.assertEqual(values, [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR])
+        self.assertFalse(source_sel.config.multiple)
+
+    def test_options_schema_keeps_the_configured_heat_source(self):
+        entry = MagicMock()
+        entry.data = {}
+        entry.options = {CONF_HEAT_SOURCE: HEAT_SOURCE_FLOOR}
+
+        handler = OptionsFlowHandler(entry)
+        schema = handler._get_options_schema()
+
+        self.assertEqual(schema.schema[CONF_HEAT_SOURCE].default, HEAT_SOURCE_FLOOR)
+
+    def test_options_schema_defaults_to_air_when_unset(self):
+        entry = MagicMock()
+        entry.data = {}
+        entry.options = {}
+
+        handler = OptionsFlowHandler(entry)
+        schema = handler._get_options_schema()
+
+        self.assertEqual(schema.schema[CONF_HEAT_SOURCE].default, HEAT_SOURCE_AIR)
+
     async def test_options_flow_temperature_validation(self):
         """Options flow must reject when min_temp >= max_temp."""
         entry = MagicMock()
@@ -294,11 +332,13 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
             CONF_MAX_TEMP: "26.0",
             CONF_TEMP_PRECISION: "0.5",
             CONF_REQUEST_TIMEOUT: "60",
+            CONF_HEAT_SOURCE: HEAT_SOURCE_FLOOR,
         }
 
         result = await handler.async_step_user(valid_input)
         self.assertEqual(result["type"], "create_entry")
         data = result["data"]
+        self.assertEqual(data[CONF_HEAT_SOURCE], HEAT_SOURCE_FLOOR)
         self.assertEqual(data[CONF_MIN_TEMP], 20.0)
         self.assertEqual(data[CONF_MAX_TEMP], 26.0)
         self.assertEqual(data[CONF_TEMP_PRECISION], 0.5)

@@ -10,11 +10,30 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 ### Added
 
 - **Modern selectors in config and options flows.** Credentials use `TextSelector` with email and password types; configuration options use `NumberSelector` with units (seconds, cycles, °C) and sliders for temperatures, and `SelectSelector` for precision and HVAC modes.
+- **`Project heat source` option** (`air`, the default, or `floor`): selects which circuit `heat` and
+  `cool` address. The project entity now exposes `project_mode_raw`, `heat_source` and
+  `configured_heat_source`, so the code table can be checked from Home Assistant without reading
+  the API by hand.
+
+### Fixed
+
+- **"Off" no longer switches the heating on, and "heat" reaches the air circuit.** The project mode
+  table mapped `off` to `2`, which the app reads as **hot air**, and `heat` to `4`, which is **heat
+  floor**. On an installation with ducted units only, switching the project off started the heating
+  and setting it to heat left it blowing nothing (issue #96). The table is now
+  `1 cool air · 2 hot air · 3 off · 4 heat floor · 5 cool floor`, and the code to send is chosen by
+  `(mode, heat source)` because the mapping is no longer invertible. Code `6` ("auto"), which the
+  app does not offer at all, has been removed.
+- **An unmapped project mode logs a warning with its raw value** instead of being silently reported
+  as `off`.
 
 ### Changed
 
 - **Minimum request timeout lowered to 45 s** (was 50 s). 45 s is the value recommended by
   Koolnova support, so the hard floor is now 45 s; the default stays 50 s.
+- **Behaviour change for existing installations:** `heat` and `cool` on the project entity now send
+  the code of the configured heat source, which defaults to `air`. Anyone whose heating runs through
+  an underfloor circuit must set *Project heat source* to `floor` in the options.
 
 ## [2.0.10] — 2026-11-05
 

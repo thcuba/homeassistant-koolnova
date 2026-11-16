@@ -25,7 +25,11 @@ from homeassistant.components.persistent_notification import async_create
 from .const import (
     DOMAIN,
     KOOLNOVA_TO_HVAC_MODE,
-    HVAC_TO_KOOLNOVA_MODE,
+    KOOLNOVA_MODE_TO_HEAT_SOURCE,
+    KOOLNOVA_PROJECT_MODE_CODE,
+    AVAILABLE_HEAT_SOURCES,
+    CONF_HEAT_SOURCE,
+    DEFAULT_HEAT_SOURCE,
     KOOLNOVA_ZONE_STATUS_TO_HVAC,
     HVAC_TO_KOOLNOVA_ZONE_STATUS,
     KOOLNOVA_TO_FAN,
@@ -101,6 +105,13 @@ class KoolnovaConfigMixin:
         except (ValueError, TypeError):
             return DEFAULT_TEMP_PRECISION
 
+    def _get_heat_source(self):
+        """Get the configured heat source (air or underfloor) for the project circuit."""
+        source = self._get_config_value(CONF_HEAT_SOURCE, DEFAULT_HEAT_SOURCE)
+        if source not in AVAILABLE_HEAT_SOURCES:
+            return DEFAULT_HEAT_SOURCE
+        return source
+
 class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
     """Project entity with global control: temperature, project HVAC mode, zone fan speed, and zone HVAC mode."""
 
@@ -112,6 +123,9 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         self.coordinator = coordinator
         self.config_entry = config_entry
         self._project = project
+        # Project modes already reported as unmapped, so the warning is logged once
+        # per value instead of on every coordinator refresh.
+        self._unmapped_modes_warned = set()
 
         self._attr_unique_id = f"{config_entry.entry_id}_project_{project['Topic_id']}"
         self._attr_supported_features = (
@@ -215,7 +229,20 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
     def hvac_mode(self):
         """Return current project HVAC mode."""
         self._update_project_data()
-        current_mode = KOOLNOVA_TO_HVAC_MODE.get(self._project["Mode"], HVACMode.OFF)
+        raw_mode = self._project.get("Mode")
+        current_mode = KOOLNOVA_TO_HVAC_MODE.get(raw_mode)
+        if current_mode is None:
+            # Never guess: an unknown code is reported as off and logged once, with
+            # its raw value, so the mapping can be completed from a real report.
+            if raw_mode not in self._unmapped_modes_warned:
+                self._unmapped_modes_warned.add(raw_mode)
+                _LOGGER.warning(
+                    "Unmapped project mode %r for %s: reporting 'off'. "
+                    "Please report this value, the code table is incomplete.",
+                    raw_mode,
+                    self._attr_name,
+                )
+            return HVACMode.OFF
         if current_mode not in self.hvac_modes:
             return HVACMode.OFF
         return current_mode
@@ -295,6 +322,11 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         attrs = {
             "eco_mode": self._project["eco"],
             "is_stop": self._project.get("is_stop"),
+            # Raw cloud value and the circuit it drives: this is what makes the code
+            # table verifiable without reading the API by hand.
+            "project_mode_raw": self._project.get("Mode"),
+            "heat_source": KOOLNOVA_MODE_TO_HEAT_SOURCE.get(self._project.get("Mode")),
+            "configured_heat_source": self._get_heat_source(),
             "total_zones": sensors_count,
             "control_type": "global_controller",
             "configured_project_modes": [mode.value for mode in self._get_project_hvac_modes()],
@@ -334,16 +366,27 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             _LOGGER.error("Unsupported project HVAC mode: %s. Available: %s", hvac_mode, self.hvac_modes)
             return
 
-        koolnova_mode = HVAC_TO_KOOLNOVA_MODE.get(hvac_mode)
+        heat_source = self._get_heat_source()
+        koolnova_mode = KOOLNOVA_PROJECT_MODE_CODE.get((hvac_mode, heat_source))
         if not koolnova_mode:
-            _LOGGER.error("HVAC mode not mapped: %s", hvac_mode)
+            _LOGGER.error(
+                "No Koolnova code for HVAC mode %s with heat source %s: the cloud only "
+                "exposes cool/heat on the air and underfloor circuits",
+                hvac_mode,
+                heat_source,
+            )
             return
 
         body = {"mode": koolnova_mode}
 
         try:
             await self.coordinator.async_update_project_data(self._project["Topic_id"], body)
-            _LOGGER.info("Project mode updated to %s", hvac_mode)
+            _LOGGER.info(
+                "Project mode updated to %s (heat source %s, code %s)",
+                hvac_mode,
+                heat_source,
+                koolnova_mode,
+            )
         except Exception as err:
             _LOGGER.error("Error updating project mode: %s", err)
             async_create(
