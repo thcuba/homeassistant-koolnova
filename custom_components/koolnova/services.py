@@ -8,6 +8,7 @@ from, so the bulk zone command moved here instead of being dropped.
 import logging
 
 from homeassistant.components.climate import HVACMode
+from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 
 from .const import DOMAIN, HVAC_TO_KOOLNOVA_ZONE_STATUS
@@ -19,8 +20,31 @@ ATTR_MODE = "mode"
 ZONE_MODES = ("cool", "heat", "off", "auto")
 
 
+def _targeted_coordinators(hass: HomeAssistant, entity_ids):
+    """Return the coordinators the call targets.
+
+    An empty target means every project. When entities are given, their config
+    entries select the projects, so picking one entity from the UI does not
+    silently touch the others.
+    """
+    coordinators = hass.data.get(DOMAIN, {})
+    if not entity_ids:
+        return list(coordinators.values())
+
+    from homeassistant.helpers import entity_registry as er
+
+    registry = er.async_get(hass)
+    entry_ids = set()
+    for entity_id in entity_ids:
+        entry = registry.async_get(entity_id)
+        if entry is not None and entry.config_entry_id:
+            entry_ids.add(entry.config_entry_id)
+
+    return [coordinator for entry_id, coordinator in coordinators.items() if entry_id in entry_ids]
+
+
 async def _async_set_all_zones_mode(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Set the HVAC mode of every zone in every project."""
+    """Set the HVAC mode of the selected zones."""
     mode = call.data[ATTR_MODE]
     try:
         status_code = HVAC_TO_KOOLNOVA_ZONE_STATUS.get(HVACMode(mode))
@@ -35,9 +59,16 @@ async def _async_set_all_zones_mode(hass: HomeAssistant, call: ServiceCall) -> N
         )
         return
 
+    targets = _targeted_coordinators(hass, call.data.get(ATTR_ENTITY_ID))
+    if not targets:
+        _LOGGER.error(
+            "No Koolnova project matched the selection, so no zone was changed"
+        )
+        return
+
     updated = 0
     failed = 0
-    for coordinator in hass.data.get(DOMAIN, {}).values():
+    for coordinator in targets:
         try:
             result = await coordinator.async_update_all_sensors_status(status_code)
             updated += result.get("updated", 0)
@@ -60,7 +91,9 @@ def async_register_services(hass: HomeAssistant) -> None:
     # unit tests, and a module-level import would break every test module.
     import voluptuous as vol
 
-    schema = vol.Schema({vol.Required(ATTR_MODE): vol.In(list(ZONE_MODES))})
+    from homeassistant.helpers import config_validation as cv
+
+    schema = cv.make_entity_service_schema({vol.Required(ATTR_MODE): vol.In(list(ZONE_MODES))})
 
     async def handle_set_all_zones_mode(call: ServiceCall) -> None:
         await _async_set_all_zones_mode(hass, call)
