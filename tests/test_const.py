@@ -102,15 +102,15 @@ class ProjectModeTest(unittest.TestCase):
                 self.assertNotEqual(cooling, heating)
 
     def test_heat_source_mapping_matches_the_code_table(self):
-        """1 and 2 drive the air circuit, 3 the floor, 4 and 5 both together."""
+        """1 and 2 drive the air circuit, 3 the floor, 5 and 6 both together."""
         self.assertEqual(
             const.KOOLNOVA_MODE_TO_HEAT_SOURCE,
             {
                 "1": const.HEAT_SOURCE_AIR,
                 "2": const.HEAT_SOURCE_AIR,
                 "3": const.HEAT_SOURCE_FLOOR,
-                "4": const.HEAT_SOURCE_BOTH,
                 "5": const.HEAT_SOURCE_BOTH,
+                "6": const.HEAT_SOURCE_BOTH,
             },
         )
 
