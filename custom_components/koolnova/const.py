@@ -112,6 +112,20 @@ KOOLNOVA_PROJECT_MODE_CODE = {
     (HVACMode.HEAT, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_HEAT_BOTH,
 }
 
+# Presets exposed on the project entity: the five entries the app offers. Each is a
+# (mode, circuit) pair, so picking one sends its code directly instead of having to
+# set a global heat source first. Names are the stable keys used by the translations.
+KOOLNOVA_PRESET_CODES = {
+    "cool_air": KOOLNOVA_MODE_COOL_AIR,
+    "hot_air": KOOLNOVA_MODE_HOT_AIR,
+    "heat_floor": KOOLNOVA_MODE_HEAT_FLOOR,
+    "cool_both": KOOLNOVA_MODE_COOL_BOTH,
+    "heat_both": KOOLNOVA_MODE_HEAT_BOTH,
+}
+
+# Which preset a raw mode corresponds to. Off, auto and unmapped codes have none.
+KOOLNOVA_MODE_TO_PRESET = {code: name for name, code in KOOLNOVA_PRESET_CODES.items()}
+
 # Status mappings for sensors/zones - only the forward definition is written by hand
 KOOLNOVA_ZONE_STATUS_TO_HVAC = {
     "00": HVACMode.COOL,

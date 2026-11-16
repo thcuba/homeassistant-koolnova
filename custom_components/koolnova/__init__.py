@@ -22,6 +22,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    # Services are per Home Assistant instance, not per entry: register once.
+    # Imported here so that importing the package does not require voluptuous.
+    from .services import async_register_services
+
+    async_register_services(hass)
+
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
