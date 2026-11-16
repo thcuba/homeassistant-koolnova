@@ -186,12 +186,35 @@ encodings** � an easy mistake to make.
 
 ### Project mode (`mode`)
 
-| Code | HA mode |
-|---|---|
-| `"1"` | `cool` |
-| `"2"` | `off` |
-| `"4"` | `heat` |
-| `"6"` | `auto` |
+The cloud drives **two independent circuits** — air and underfloor — and encodes the four
+cool/hot × air/floor combinations with four distinct codes. "Heat" on its own is therefore
+ambiguous: the app labels the four entries separately.
+
+| Code | HA mode | What it actually drives |
+|---|---|---|
+| `"1"` | `cool` | cool **air** (ducted units) |
+| `"2"` | `heat` | **hot air** (ducted units) |
+| `"3"` | `off` | off — *inferred, see the note below* |
+| `"4"` | `heat` | **heat floor** (underfloor circuit) |
+| `"5"` | `cool` | cool **floor** (underfloor circuit) |
+
+Because two codes collapse onto `heat` and two onto `cool`, this mapping is **not invertible**: the
+code to send depends on the configured heat source (`heat_source` option, `air` or `floor`). The
+table used for writing is `KOOLNOVA_PROJECT_MODE_CODE` in `const.py`, keyed by
+`(hvac mode, heat source)`.
+
+> **Why the old table was wrong.** Until 2.1.0 it read `1 cool, 2 off, 4 heat, 6 auto`, with the
+> inverse map generated automatically. That made `off` send `2`, which the app reads as **hot air**:
+> switching the installation off switched the heating *on*. It also made `heat` send `4`, the
+> underfloor circuit, so an installation with ducted air only never blew hot air (issue #96). Code
+> `6` turned out not to exist in the app at all.
+>
+> **The `off` code (`3`) is still inferred.** The app offers four entries — 1, 2, 4, 5 — and `3` is
+> the gap in that sequence; it has not been confirmed against the cloud yet. Two safeguards make
+> that verifiable without reading the API by hand: the raw value is exposed as the
+> `project_mode_raw` entity attribute, and an unmapped code is logged once as a warning with its
+> value instead of being silently treated as off. Put the installation in a mode from the app and
+> compare `project_mode_raw` with what the app shows.
 
 ### Zone status (`status`)
 

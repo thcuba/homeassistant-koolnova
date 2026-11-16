@@ -63,13 +63,66 @@ class ProjectModeTest(unittest.TestCase):
     def test_project_mode_codes(self):
         self.assertEqual(
             const.KOOLNOVA_TO_HVAC_MODE,
-            {"1": "cool", "2": "off", "4": "heat", "6": "auto"},
+            {"1": "cool", "2": "heat", "3": "off", "4": "heat", "5": "cool"},
         )
 
-    def test_project_mode_inverse_round_trips(self):
-        for code, mode in const.KOOLNOVA_TO_HVAC_MODE.items():
-            with self.subTest(code=code):
-                self.assertEqual(const.HVAC_TO_KOOLNOVA_MODE[mode], code)
+    def test_project_mode_code_is_chosen_by_mode_and_heat_source(self):
+        self.assertEqual(
+            const.KOOLNOVA_PROJECT_MODE_CODE,
+            {
+                ("cool", "air"): "1",
+                ("cool", "floor"): "5",
+                ("heat", "air"): "2",
+                ("heat", "floor"): "4",
+                ("off", "air"): "3",
+                ("off", "floor"): "3",
+            },
+        )
+
+    def test_every_code_sent_reads_back_as_the_requested_mode(self):
+        """A command must never come back as something else.
+
+        This is the regression that made 'off' switch the heating on: the old table
+        mapped 'off' to 2, which the app labels 'hot air'.
+        """
+        for (mode, _source), code in const.KOOLNOVA_PROJECT_MODE_CODE.items():
+            with self.subTest(mode=mode, code=code):
+                self.assertEqual(const.KOOLNOVA_TO_HVAC_MODE[code], mode)
+
+    def test_off_does_not_depend_on_the_heat_source(self):
+        """Switching off must be identical whatever circuit is configured."""
+        for source in const.AVAILABLE_HEAT_SOURCES:
+            with self.subTest(source=source):
+                self.assertEqual(
+                    const.KOOLNOVA_PROJECT_MODE_CODE[("off", source)],
+                    const.KOOLNOVA_MODE_OFF,
+                )
+
+    def test_heat_and_cool_never_share_a_code(self):
+        for source in const.AVAILABLE_HEAT_SOURCES:
+            with self.subTest(source=source):
+                self.assertNotEqual(
+                    const.KOOLNOVA_PROJECT_MODE_CODE[("heat", source)],
+                    const.KOOLNOVA_PROJECT_MODE_CODE[("cool", source)],
+                )
+
+    def test_heat_source_mapping_matches_the_code_table(self):
+        """Cool air/hot air drive the air circuit; heat floor/cool floor the floor."""
+        self.assertEqual(const.KOOLNOVA_MODE_TO_HEAT_SOURCE["1"], const.HEAT_SOURCE_AIR)
+        self.assertEqual(const.KOOLNOVA_MODE_TO_HEAT_SOURCE["2"], const.HEAT_SOURCE_AIR)
+        self.assertEqual(const.KOOLNOVA_MODE_TO_HEAT_SOURCE["4"], const.HEAT_SOURCE_FLOOR)
+        self.assertEqual(const.KOOLNOVA_MODE_TO_HEAT_SOURCE["5"], const.HEAT_SOURCE_FLOOR)
+
+    def test_off_has_no_heat_source(self):
+        self.assertNotIn(const.KOOLNOVA_MODE_OFF, const.KOOLNOVA_MODE_TO_HEAT_SOURCE)
+
+    def test_code_6_is_gone(self):
+        """The app offers 1/2/4/5 only: the old '6' mapped to 'auto' did not exist."""
+        self.assertNotIn("6", const.KOOLNOVA_TO_HVAC_MODE)
+
+    def test_default_heat_source_is_selectable(self):
+        self.assertIn(const.DEFAULT_HEAT_SOURCE, const.AVAILABLE_HEAT_SOURCES)
+        self.assertEqual(len(const.AVAILABLE_HEAT_SOURCES), 2)
 
 
 class ZoneStatusTest(unittest.TestCase):
@@ -127,11 +180,22 @@ class LimitsTest(unittest.TestCase):
             with self.subTest(mode=mode):
                 self.assertIn(mode, const.AVAILABLE_HVAC_MODES)
 
-    def test_every_available_mode_can_be_encoded(self):
+    def test_every_available_zone_mode_can_be_encoded(self):
         for mode in const.AVAILABLE_HVAC_MODES:
             with self.subTest(mode=mode):
-                self.assertIn(mode, const.HVAC_TO_KOOLNOVA_MODE)
                 self.assertIn(mode, const.HVAC_TO_KOOLNOVA_ZONE_STATUS)
+
+    def test_every_project_mode_except_auto_can_be_encoded(self):
+        """The cloud has no 'auto' on the project circuit: cool, heat and off only."""
+        for mode in ("cool", "heat", "off"):
+            for source in const.AVAILABLE_HEAT_SOURCES:
+                with self.subTest(mode=mode, source=source):
+                    self.assertIn((mode, source), const.KOOLNOVA_PROJECT_MODE_CODE)
+
+    def test_auto_is_not_encoded_for_the_project(self):
+        for source in const.AVAILABLE_HEAT_SOURCES:
+            with self.subTest(source=source):
+                self.assertNotIn(("auto", source), const.KOOLNOVA_PROJECT_MODE_CODE)
 
     def test_default_precision_is_selectable(self):
         self.assertIn(const.DEFAULT_TEMP_PRECISION, const.AVAILABLE_TEMP_PRECISIONS)

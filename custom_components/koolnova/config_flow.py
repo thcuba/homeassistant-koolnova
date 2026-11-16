@@ -45,6 +45,10 @@ from .const import (
     MIN_REQUEST_TIMEOUT,
     MAX_REQUEST_TIMEOUT,
     CONF_REQUEST_TIMEOUT,
+    CONF_HEAT_SOURCE,
+    DEFAULT_HEAT_SOURCE,
+    HEAT_SOURCE_AIR,
+    HEAT_SOURCE_FLOOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -226,6 +230,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             CONF_REQUEST_TIMEOUT,
             current_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
         )
+        current_heat_source = current_options.get(
+            CONF_HEAT_SOURCE,
+            current_data.get(CONF_HEAT_SOURCE, DEFAULT_HEAT_SOURCE),
+        )
 
         return vol.Schema(
             {
@@ -301,6 +309,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         step=1,
                         unit_of_measurement=UnitOfTime.SECONDS,
                         mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(CONF_HEAT_SOURCE, default=current_heat_source): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=HEAT_SOURCE_AIR, label="Air (ducted units)"
+                            ),
+                            selector.SelectOptionDict(
+                                value=HEAT_SOURCE_FLOOR, label="Underfloor circuit"
+                            ),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
             }

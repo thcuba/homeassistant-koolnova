@@ -15,7 +15,8 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 ## Features
 
-- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / AUTO / OFF)
+- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / OFF), with the project heat source — air or
+  underfloor — selectable in the options, because the two circuits use different mode codes
 - 🌡️ **Target temperature** per zone and global median across zones
 - 🌬️ **Fan speed** per zone (LOW / MEDIUM / HIGH / AUTO)
 - 🏠 **Global project control** (mode, ECO, stop) on a single `climate` entity
@@ -88,6 +89,12 @@ Options available afterwards through *Configure*:
 | Temperature range | 21–27 °C | 15–35 °C |
 | Temperature precision | 0.5 °C | 0.5 or 1 °C |
 | API request timeout | 50 s | 45–300 s |
+| Project heat source | air | air / floor |
+
+`Project heat source` tells the integration which circuit your installation uses. The cloud encodes
+"hot air" and "heat floor" with two different codes while Home Assistant only has one `heat`, so the
+option decides which code is sent. Leave it on `air` unless you heat through an underfloor circuit —
+see [docs/API.md](docs/API.md#project-mode-mode).
 
 ## Documentation
 
