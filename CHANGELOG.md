@@ -11,8 +11,8 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 - **Modern selectors in config and options flows.** Credentials use `TextSelector` with email and password types; configuration options use `NumberSelector` with units (seconds, cycles, °C) and sliders for temperatures, and `SelectSelector` for precision and HVAC modes.
 - **`Project heat source` option** (`air`, the default, `floor` or `both`): selects which circuit(s)
-  `heat` and `cool` address, since the app lists cool air, hot air, heat floor, heat floor + hot air
-  and cool floor + cool air as five separate entries. The project entity also exposes
+  `heat` and `cool` address, since the app lists cool air, hot air, heat floor, heat floor + hot air,
+  cool floor + cool air and auto as separate entries. The project entity also exposes
   `project_mode_raw`, `heat_source` and `configured_heat_source`, so the code table can be checked
   from Home Assistant without reading the API by hand.
 
@@ -23,10 +23,10 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   no "off" code at all — the installation stops through the `is_stop` flag — so the entity now reads
   that flag first, sets it to stop the project, and clears it again when a mode is requested.
 - **The mode table now matches the app:** `1 cool air · 2 hot air · 3 heat floor · 4 heat floor +
-  hot air · 5 cool floor + cool air`. The code to send is chosen by `(mode, heat source)` because
-  three codes collapse onto `heat` and two onto `cool`. Code `6` ("auto"), which the app does not
-  offer, has been removed; cooling on the underfloor circuit alone has no entry and fails loudly
-  instead of silently picking another circuit.
+  hot air · 5 cool floor + cool air · 6 auto`. The code to send is chosen by `(mode, heat source)`
+  because three codes collapse onto `heat` and two onto `cool`, while `auto` ignores the circuit.
+  Cooling on the underfloor circuit alone has no entry and fails loudly instead of silently picking
+  another circuit.
 - **An unmapped project mode logs a warning with its raw value** instead of being silently reported
   as `off`.
 

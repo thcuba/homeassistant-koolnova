@@ -383,8 +383,8 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             _LOGGER.error(
                 "No Koolnova code for HVAC mode %s with heat source %s. The app offers: "
                 "1 cool air, 2 hot air, 3 heat floor, 4 heat floor + hot air, "
-                "5 cool floor + cool air — so cooling is not available on the "
-                "underfloor circuit alone",
+                "5 cool floor + cool air, 6 auto — so cooling is not available on "
+                "the underfloor circuit alone",
                 hvac_mode,
                 heat_source,
             )
