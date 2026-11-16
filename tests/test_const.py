@@ -146,6 +146,35 @@ class ProjectModeTest(unittest.TestCase):
         self.assertEqual(len(const.AVAILABLE_HEAT_SOURCES), 3)
 
 
+class ProjectPresetsTest(unittest.TestCase):
+    def test_presets_are_the_five_known_entries(self):
+        self.assertEqual(
+            const.KOOLNOVA_PRESET_CODES,
+            {
+                "cool_air": "1",
+                "hot_air": "2",
+                "heat_floor": "3",
+                "cool_both": "5",
+                "heat_both": "6",
+            },
+        )
+
+    def test_every_preset_maps_to_a_known_code(self):
+        for name, code in const.KOOLNOVA_PRESET_CODES.items():
+            with self.subTest(preset=name):
+                self.assertIn(code, const.KOOLNOVA_TO_HVAC_MODE)
+
+    def test_preset_reverse_mapping_round_trips(self):
+        for name, code in const.KOOLNOVA_PRESET_CODES.items():
+            with self.subTest(preset=name):
+                self.assertEqual(const.KOOLNOVA_MODE_TO_PRESET[code], name)
+
+    def test_unmapped_and_missing_codes_have_no_preset(self):
+        """Off is a flag and code 4 is unknown: neither may claim a preset."""
+        self.assertEqual(len(const.KOOLNOVA_MODE_TO_PRESET), len(const.KOOLNOVA_PRESET_CODES))
+        self.assertNotIn("4", const.KOOLNOVA_MODE_TO_PRESET)
+
+
 class ZoneStatusTest(unittest.TestCase):
     def test_zone_status_codes(self):
         self.assertEqual(

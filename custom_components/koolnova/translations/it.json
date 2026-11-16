@@ -46,10 +46,13 @@
         "name": "Controllo globale",
         "state_attributes": {
           "preset_mode": {
-            "name": "Modalità zona",
+            "name": "Modalità progetto",
             "state": {
-              "off": "Spento",
-              "auto": "Automatico"
+              "cool_air": "Aria fredda",
+              "hot_air": "Aria calda",
+              "heat_floor": "Pavimento caldo",
+              "cool_both": "Pavimento freddo + aria fredda",
+              "heat_both": "Pavimento caldo + aria calda"
             }
           }
         }
@@ -107,6 +110,18 @@
           "rooms_last_update": {
             "name": "Rooms Last Update"
           }
+        }
+      }
+    }
+  },
+  "services": {
+    "set_all_zones_mode": {
+      "name": "Imposta modalità di tutte le zone",
+      "description": "Imposta la modalità di tutte le zone di ogni progetto.",
+      "fields": {
+        "mode": {
+          "name": "Modalità",
+          "description": "La modalità da applicare a tutte le zone."
         }
       }
     }

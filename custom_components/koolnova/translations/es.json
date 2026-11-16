@@ -46,10 +46,13 @@
         "name": "Control Global",
         "state_attributes": {
           "preset_mode": {
-            "name": "Modo Zonas",
+            "name": "Modo del proyecto",
             "state": {
-              "off": "Apagado",
-              "auto": "Auto"
+              "cool_air": "Aire frío",
+              "hot_air": "Aire caliente",
+              "heat_floor": "Suelo radiante caliente",
+              "cool_both": "Suelo frío + aire frío",
+              "heat_both": "Suelo caliente + aire caliente"
             }
           }
         }
@@ -107,6 +110,18 @@
           "rooms_last_update": {
             "name": "Rooms Last Update"
           }
+        }
+      }
+    }
+  },
+  "services": {
+    "set_all_zones_mode": {
+      "name": "Establecer el modo de todas las zonas",
+      "description": "Establece el modo de climatización de todas las zonas de cada proyecto.",
+      "fields": {
+        "mode": {
+          "name": "Modo",
+          "description": "El modo a aplicar a todas las zonas."
         }
       }
     }

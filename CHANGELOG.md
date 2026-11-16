@@ -15,6 +15,17 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   cool floor + cool air and auto as separate entries. The project entity also exposes
   `project_mode_raw`, `heat_source` and `configured_heat_source`, so the code table can be checked
   from Home Assistant without reading the API by hand.
+- **The five app modes as presets on the project entity** (`cool_air`, `hot_air`, `heat_floor`,
+  `cool_both`, `heat_both`): each preset is a (mode, circuit) pair and sends its code directly, so the
+  mode the app shows can be picked without going through the options first.
+- **`koolnova.set_all_zones_mode` service**: sets the HVAC mode of every zone in every project in one
+  go. This is the action that used to hide in the preset slot.
+
+### Changed
+
+- **Presets no longer command the zones in bulk.** The project entity presets used to apply a mode to
+  all zones; they now carry the modes the app offers, and the bulk command is
+  `koolnova.set_all_zones_mode`.
 
 ### Fixed
 

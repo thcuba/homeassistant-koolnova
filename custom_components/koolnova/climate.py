@@ -5,7 +5,6 @@
 import asyncio
 import logging
 import statistics
-from collections import Counter
 from datetime import datetime
 from requests.exceptions import HTTPError
 
@@ -28,6 +27,8 @@ from .const import (
     KOOLNOVA_MODE_TO_HEAT_SOURCE,
     KOOLNOVA_PROJECT_MODE_CODE,
     KOOLNOVA_PROJECT_STOP_KEY,
+    KOOLNOVA_PRESET_CODES,
+    KOOLNOVA_MODE_TO_PRESET,
     AVAILABLE_HEAT_SOURCES,
     CONF_HEAT_SOURCE,
     DEFAULT_HEAT_SOURCE,
@@ -147,7 +148,6 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         self._attr_should_poll = False
 
         self._global_fan_mode = FAN_AUTO
-        self._global_zone_hvac_mode = HVACMode.AUTO
 
     def _get_project_hvac_modes(self):
         """Get configured project HVAC modes."""
@@ -171,31 +171,16 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
 
     @property
     def preset_modes(self):
-        """Return available zone HVAC modes as custom preset modes."""
-        # Return the values ('off', 'auto') that will be used as keys in the translation files.
-        return [mode.value for mode in self._get_zone_hvac_modes()]
+        """Return the project modes the app offers, as presets."""
+        return list(KOOLNOVA_PRESET_CODES)
 
     @property
     def preset_mode(self):
-        """Return most common zone HVAC mode among all zones in this project."""
-        sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
-
-        if not sensors:
+        """Return the preset matching the mode the cloud reports."""
+        self._update_project_data()
+        if self._project.get(KOOLNOVA_PROJECT_STOP_KEY):
             return None
-
-        modes = []
-        for sensor in sensors:
-            status = sensor.get("Room_status", "02")
-            hvac_mode = KOOLNOVA_ZONE_STATUS_TO_HVAC.get(status, HVACMode.OFF)
-            if hvac_mode in self._get_zone_hvac_modes():
-                modes.append(hvac_mode.value)
-
-        if modes:
-            # Return the most common mode, if tie, Counter.most_common returns first one
-            most_common = Counter(modes).most_common(1)
-            if most_common:
-                return most_common[0][0]
-        return None
+        return KOOLNOVA_MODE_TO_PRESET.get(self._project.get("Mode"))
 
     @property
     def min_temp(self):
@@ -337,7 +322,6 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             "configured_project_modes": [mode.value for mode in self._get_project_hvac_modes()],
             "configured_zone_modes": [mode.value for mode in self._get_zone_hvac_modes()],
             "global_fan_mode": self._global_fan_mode,
-            "global_zone_hvac_mode": self._global_zone_hvac_mode.value,
             "zones_status_breakdown": zone_status_breakdown,
             "zones_fan_breakdown": zone_fan_breakdown,
         }
@@ -462,44 +446,27 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             async_create(self.hass, f"Error setting global fan mode: {err}", title="Koolnova Global Fan Control")
 
     async def async_set_preset_mode(self, preset_mode: str):
-        """Set global zone HVAC mode for all zones in this project."""
-        if preset_mode not in self.preset_modes:
-            _LOGGER.error("Unsupported preset mode: %s. Available: %s", preset_mode, self.preset_modes)
+        """Set the project mode by picking one of the entries the app offers.
+
+        Every preset is a (mode, circuit) pair, so this sends the cloud code
+        directly. Setting the mode of all zones in one go is the
+        `koolnova.set_all_zones_mode` service, which does not compete for the
+        preset slots.
+        """
+        code = KOOLNOVA_PRESET_CODES.get(preset_mode)
+        if code is None:
+            _LOGGER.error(
+                "Unsupported preset %s. Available: %s",
+                preset_mode,
+                list(KOOLNOVA_PRESET_CODES),
+            )
             return
 
-        try:
-            hvac_mode = HVACMode(preset_mode)
-        except ValueError:
-            _LOGGER.error("Invalid preset mode value received: %s", preset_mode)
-            return
+        body = {"mode": code}
+        if self._project.get(KOOLNOVA_PROJECT_STOP_KEY):
+            body[KOOLNOVA_PROJECT_STOP_KEY] = False
 
-        status_code = HVAC_TO_KOOLNOVA_ZONE_STATUS.get(hvac_mode)
-        if not status_code:
-            _LOGGER.error("Zone HVAC mode not mapped: %s", hvac_mode)
-            return
-
-        self._global_zone_hvac_mode = hvac_mode
-        self.async_write_ha_state()
-
-        topic_id = self._project.get("Topic_id")
-        _LOGGER.info("Setting global zone HVAC mode to %s (status: %s) for all zones in project %s",
-                    hvac_mode, status_code, topic_id)
-
-        try:
-            result = await self.coordinator.async_update_all_sensors_status(status_code, topic_id=topic_id)
-            if result.get("failed", 0) > 0:
-                async_create(
-                    self.hass,
-                    f"Global zone HVAC mode update completed with some failures: "
-                    f"{result.get('updated', 0)} successful, {result.get('failed', 0)} failed",
-                    title="Koolnova Global Zone Control",
-                )
-            else:
-                _LOGGER.info("Global zone HVAC mode successfully updated to %s for all %d zones in project %s",
-                            preset_mode, result.get("updated", 0), topic_id)
-        except Exception as err:
-            _LOGGER.error("Error setting global zone HVAC mode: %s", err)
-            async_create(self.hass, f"Error setting global zone HVAC mode: {err}", title="Koolnova Global Zone Control")
+        await self._async_send_project_payload(body, f"preset {preset_mode} (code {code})")
 
 
     async def async_set_temperature(self, **kwargs):

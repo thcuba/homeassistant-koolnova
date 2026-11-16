@@ -1,0 +1,20 @@
+set_all_zones_mode:
+  name: Set all zones mode
+  description: >-
+    Set the HVAC mode of every zone in every Koolnova project in one go. The
+    project entities keep their presets for the modes the official app offers
+    (cool air, hot air, heat floor, cool floor + cool air, heat floor + hot air),
+    so this bulk action is a service instead of a preset.
+  fields:
+    mode:
+      name: Mode
+      description: The mode to apply to all zones.
+      required: true
+      example: heat
+      selector:
+        select:
+          options:
+            - cool
+            - heat
+            - off
+            - auto

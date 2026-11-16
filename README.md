@@ -15,8 +15,10 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 ## Features
 
-- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / OFF), with the project heat source — air,
-  underfloor or both — selectable in the options, because the app lists those circuits separately
+- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / OFF), plus the five modes the official app
+  offers — cool air, hot air, heat floor, cool floor + cool air, heat floor + hot air — selectable as
+  **presets** on the project entity
+- 🎛️ **`koolnova.set_all_zones_mode` service** to set the mode of every zone at once
 - 🌡️ **Target temperature** per zone and global median across zones
 - 🌬️ **Fan speed** per zone (LOW / MEDIUM / HIGH / AUTO)
 - 🏠 **Global project control** (mode, ECO, stop) on a single `climate` entity

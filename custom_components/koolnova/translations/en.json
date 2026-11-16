@@ -46,10 +46,13 @@
         "name": "Global Control",
         "state_attributes": {
           "preset_mode": {
-            "name": "Zone Mode",
+            "name": "Project mode",
             "state": {
-              "off": "Off",
-              "auto": "Auto"
+              "cool_air": "Cool air",
+              "hot_air": "Hot air",
+              "heat_floor": "Heat floor",
+              "cool_both": "Cool floor + cool air",
+              "heat_both": "Heat floor + hot air"
             }
           }
         }
@@ -107,6 +110,18 @@
           "rooms_last_update": {
             "name": "Rooms Last Update"
           }
+        }
+      }
+    }
+  },
+  "services": {
+    "set_all_zones_mode": {
+      "name": "Set all zones mode",
+      "description": "Set the HVAC mode of every zone in every project.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "The mode to apply to all zones."
         }
       }
     }
