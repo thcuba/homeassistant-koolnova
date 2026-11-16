@@ -47,6 +47,22 @@ If it persists, delete the integration from the UI, restart HA and add it again.
 - The state HA shows comes from the last cached read; with a 30 s interval it can lag behind a
   change made from the official app.
 
+## "Set to heat but nothing blows hot air"
+
+On the **project** entity, `heat` means **underfloor heating**: the integration sends
+`{"mode": "4"}`, which the cloud reads as *Plancher chauffant*. If your installation has ducted air
+only — no underfloor circuit — nothing heats, because the air side is never switched on.
+
+This is a known limitation, not a fault in your setup: the API code for "hot air" has never been
+observed, so it cannot be mapped (see [API.md](API.md#project-mode-mode)). Until it is, choose the
+heating mode in the official Koolnova app and leave the project mode alone from Home Assistant.
+
+**Zone entities are not affected.** Zone modes use a different encoding (the `status` field:
+`00` cool, `01` heat, `02` off, `03` auto), and `heat` on a zone behaves normally.
+
+If you can help identify the code: set each mode in the app, then report the `mode` value the project
+payload carries (`GET projects/`, the `mode` field inside `topic`).
+
 ## HACS: "No content to download"
 
 The release tag and the `"version"` field in `manifest.json` do not match. That is a packaging

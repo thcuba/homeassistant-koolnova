@@ -15,7 +15,9 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 ## Features
 
-- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / AUTO / OFF)
+- ❄️ **HVAC modes per zone and globally** (COOL / HEAT / AUTO / OFF). On the project entity `HEAT`
+  selects **underfloor heating**, not hot air — the cloud reads `mode = 4` that way and the code for
+  "hot air" is not known yet: see [docs/API.md](docs/API.md#project-mode-mode).
 - 🌡️ **Target temperature** per zone and global median across zones
 - 🌬️ **Fan speed** per zone (LOW / MEDIUM / HIGH / AUTO)
 - 🏠 **Global project control** (mode, ECO, stop) on a single `climate` entity

@@ -16,6 +16,15 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 - **Minimum request timeout lowered to 45 s** (was 50 s). 45 s is the value recommended by
   Koolnova support, so the hard floor is now 45 s; the default stays 50 s.
 
+### Documentation
+
+- **`heat` on the project entity means underfloor heating, not hot air.** The cloud reads
+  `{"mode": "4"}` as *Plancher chauffant*: on an installation with ducted air only the units do not
+  blow hot air (issue #96, confirmed against the official app). The code for "hot air" has never been
+  observed, so the integration cannot offer the choice yet. `docs/API.md` now states this next to the
+  code table, with how to obtain the mapping from the API instead of guessing it, and the README
+  points to it.
+
 ## [2.0.10] — 2026-11-05
 
 ### Added

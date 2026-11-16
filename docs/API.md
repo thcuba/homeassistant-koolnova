@@ -186,12 +186,27 @@ encodings** � an easy mistake to make.
 
 ### Project mode (`mode`)
 
-| Code | HA mode |
-|---|---|
-| `"1"` | `cool` |
-| `"2"` | `off` |
-| `"4"` | `heat` |
-| `"6"` | `auto` |
+| Code | HA mode | What it actually selects |
+|---|---|---|
+| `"1"` | `cool` | cooling |
+| `"2"` | `off` | off |
+| `"4"` | `heat` | **underfloor heating** — not hot air |
+| `"6"` | `auto` | automatic |
+
+> **`heat` is underfloor heating, not hot air.** Verified on the field (integration 2.0.11, issue
+> #96): setting the project climate to `heat` sends `{"mode": "4"}`, and the official Koolnova app
+> then shows *Plancher chauffant* ("underfloor heating"). On an installation with ducted air only —
+> no underfloor circuit — the air units simply do not blow hot air, so `heat` looks broken there.
+>
+> Codes **`3` and `5` have never been observed**: the code for "hot air", and for the
+> hot-air-plus-underfloor combination, is unknown. No installation we have access to exposes it, and
+> the discovery runs only ever recorded `"1"`. The integration therefore maps HA `heat` to `4` and
+> cannot yet distinguish the heat source. Until the codes are known, an air-only installation has to
+> choose its heating mode in the official app.
+>
+> **Do not guess a code.** Set each mode in the official app, then read `mode` back from the project
+> payload (`GET projects/`, the `mode` field inside `topic`): the value that comes back is the
+> mapping. Guessing risks putting an underfloor circuit into a state nobody asked for.
 
 ### Zone status (`status`)
 
