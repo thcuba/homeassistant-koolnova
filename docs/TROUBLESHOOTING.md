@@ -50,17 +50,22 @@ If it persists, delete the integration from the UI, restart HA and add it again.
 ## "Set to heat but nothing blows hot air"
 
 The cloud drives **two circuits** — air and underfloor — and the app offers their combinations as
-separate entries: `2` is hot air, `3` is heat floor, `4` is heat floor + hot air. Home Assistant has
-only one `heat`, so the integration sends the entry matching the **Project heat source** option (see
-[API.md](API.md#project-mode-mode)).
+separate entries: `1` cool air, `2` hot air, `3` heat floor, `5` cool floor + cool air, `6` heat floor
++ hot air (`4` is not identified yet). Home Assistant has only one `heat` and one `cool`, so the
+circuit has to be chosen separately, and there are two ways to do it:
+
+- **the presets on the project entity** (`cool_air`, `hot_air`, `heat_floor`, `cool_both`,
+  `heat_both`) send that exact entry — use these to get what the app shows;
+- **`heat` / `cool` from the mode selector** send the entry matching the **Project heat source**
+  option (see [API.md](API.md#project-mode-mode)).
 
 If the units do not blow hot air:
 
 1. look at the `heat_source` attribute on the project entity: it reports which circuit the cloud says
    is active;
-2. set **Settings → Devices & services → Koolnova → Configure → Project heat source** to `air` if your
-   installation has ducted units only (default is already `air`); choose `both` if air and floor work
-   together;
+2. pick the preset that matches what the app shows, or set **Settings → Devices & services →
+   Koolnova → Configure → Project heat source** to `air` if your installation has ducted units only
+   (default is already `air`); choose `both` if air and floor work together;
 3. if it still does not match, compare `project_mode_raw` with what the official app shows and report
    both values — the table comes from the app and is not verified against the cloud yet.
 

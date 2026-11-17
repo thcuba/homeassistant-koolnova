@@ -221,7 +221,7 @@ to another circuit.
 > attribute and an unmapped code logs a warning carrying its value, so the table can be confirmed —
 > or corrected — from Home Assistant, without reading the API by hand.
 >
-> **Why the old table was wrong.** Until 2.1.0 it read `1 cool, 2 off, 4 heat, 6 auto`, with the
+> **Why the old table was wrong.** Until 2.0.11 it read `1 cool, 2 off, 4 heat, 6 auto`, with the
 > inverse map generated automatically. That made `off` send `2`, which the app reads as **hot air**:
 > switching the installation off switched the heating *on*. `heat` sent `4`, which also implied the
 > underfloor circuit, so an installation with ducted air only never blew hot air (issue #96). Code

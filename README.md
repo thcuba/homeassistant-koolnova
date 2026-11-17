@@ -42,7 +42,7 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 | Entity | Domain | Purpose |
 |---|---|---|
-| `climate.koolnova_*` (project) | climate | Global control: target temperature (median of zones), project HVAC mode, ECO/stop attributes |
+| `climate.koolnova_*` (project) | climate | Global control: target temperature (median of zones), project HVAC mode, ECO/stop, and the five app modes as **presets**; exposes `project_mode_raw`, `heat_source`, `configured_heat_source` |
 | `climate.koolnova_*` (zone) | climate | One per room: temperature, setpoint, HVAC mode, fan speed |
 | `climate.koolnova_hub_*` | climate | Legacy hub, one per hub: ON/OFF + manual / auto / planning |
 | `switch.koolnova_<room>_power` | switch | One per room: power on/off toggle |
@@ -99,6 +99,33 @@ cool air — while Home Assistant only has one `heat` and one `cool`, so this op
 is sent. Pick `air` for ducted units only (the default), `floor` for an underfloor circuit alone
 (heating only: the app has no cool-floor-only entry), or `both` when the two work together — see
 [docs/API.md](docs/API.md#project-mode-mode).
+
+The five entries are also exposed as **presets** on the project entity (`cool_air`, `hot_air`,
+`heat_floor`, `cool_both`, `heat_both`): a preset sends its own code straight away and does not read
+this option, which is the simplest way to get exactly what the app shows.
+
+## Services
+
+### `koolnova.set_all_zones_mode`
+
+Set the HVAC mode of every zone of a project in one call — the action that used to live in the
+presets of the project entity.
+
+| Field | Required | Values |
+|---|---|---|
+| `mode` | yes | `cool` / `heat` / `off` / `auto` |
+| `target` | no | any Koolnova `climate` entity; omitted means every project |
+
+```yaml
+action: koolnova.set_all_zones_mode
+target:
+  entity_id: climate.koolnova_ac_casa_controllo_globale
+data:
+  mode: "off"
+```
+
+The call reports how many zones were updated in the log. Zone modes use their own encoding
+(`00` cool, `01` heat, `02` off, `03` auto), which is not the project `mode` table.
 
 ## Documentation
 
