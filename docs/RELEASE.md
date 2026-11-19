@@ -138,6 +138,18 @@ python scripts/check_version.py --tag 2.0.9                        # a release a
 python scripts/check_version.py --not-older-than $(git tag --sort=-creatordate | head -1)
 ```
 
+The tag build also refuses a tag whose commit is **not on `main`** (`--require-on-main origin/main`).
+A tag cut on a side branch can carry a perfectly matching `manifest.json`, so the version comparison
+alone is happy, while HACS would hand out code that was never merged. Locally:
+
+```bash
+python scripts/check_version.py --tag 2.0.10 --require-on-main origin/main
+```
+
+**Before creating the tag** you can ask the same question without creating anything: *Actions →
+Release version → Run workflow*, entering the version (e.g. `2.0.13`). It validates only - no tag, no
+release - because releasing stays a deliberate act (step 7 above).
+
 ## Re-cutting a release (same version)
 
 If a release has to be republished on a newer commit — for example when the manifest was wrong in
@@ -172,6 +184,8 @@ retired.
 
 - [ ] All changes tested in Home Assistant
 - [ ] `manifest.json` version matches upcoming tag (`python scripts/check_version.py --tag <tag>`)
+- [ ] the tag will be cut on `main` (`--require-on-main origin/main`, or the *Release version*
+      workflow run manually with the version before tagging)
 - [ ] `hacs.json` configured correctly
 - [ ] `custom_components/` directory present
 - [ ] All imports use relative syntax (development rule check)

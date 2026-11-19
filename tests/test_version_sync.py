@@ -128,6 +128,86 @@ class RealRepositoryTest(unittest.TestCase):
         )
 
 
+class TagProvenanceTest(unittest.TestCase):
+    """A tag on a side branch carries a matching manifest and still must not be released.
+
+    The version comparison cannot see where a tag sits: it only reads the manifest inside it. These
+    tests cover `--require-on-main`, which is what closes that gap.
+    """
+
+    def setUp(self):
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.repo, ignore_errors=True)
+        self._git("init", "-q", "-b", "main")
+        self._git("config", "user.email", "test@example.com")
+        self._git("config", "user.name", "Test")
+        (self.repo / "file.txt").write_text("1", encoding="utf-8")
+        self._git("add", ".")
+        self._git("commit", "-q", "-m", "first")
+
+    def _git(self, *args):
+        return check_version._git(list(args), self.repo)
+
+    def _tag_on_a_side_branch(self, tag):
+        self._git("checkout", "-q", "-b", "side")
+        (self.repo / "file.txt").write_text("2", encoding="utf-8")
+        self._git("commit", "-q", "-am", "side work")
+        self._git("tag", tag)
+
+    def test_tag_on_main_is_accepted(self):
+        self._git("tag", "2.0.12")
+        self.assertIsNone(check_version.check_tag_is_reachable("2.0.12", "main", self.repo))
+
+    def test_tag_on_a_side_branch_is_rejected(self):
+        self._tag_on_a_side_branch("2.0.13")
+        problem = check_version.check_tag_is_reachable("2.0.13", "main", self.repo)
+        self.assertIsNotNone(problem)
+        self.assertIn("non e' raggiungibile", problem)
+        self.assertIn("main", problem)
+
+    def test_a_missing_tag_is_reported_not_raised(self):
+        problem = check_version.check_tag_is_reachable("9.9.9", "main", self.repo)
+        self.assertIsNotNone(problem)
+        self.assertIn("non esiste", problem)
+
+    def test_a_missing_branch_is_reported_with_the_fetch_hint(self):
+        self._git("tag", "2.0.12")
+        problem = check_version.check_tag_is_reachable("2.0.12", "origin/does-not-exist", self.repo)
+        self.assertIsNotNone(problem)
+        self.assertIn("fetch-depth", problem)
+
+    def test_the_flag_turns_a_passing_check_into_a_failure(self):
+        """The same side-branch tag passes without the flag and fails with it: that is the gap."""
+        manifest = _manifest_with("2.0.13")
+        self._tag_on_a_side_branch("2.0.13")
+
+        # Without provenance: the manifest agrees, so the check is happy.
+        self.assertEqual(
+            check_version.main(["--tag", "2.0.13", "--manifest", str(manifest)]),
+            0,
+        )
+        # With provenance: same manifest, rejected because the commit is not on main.
+        self.assertEqual(
+            check_version.main(
+                [
+                    "--tag",
+                    "2.0.13",
+                    "--manifest",
+                    str(manifest),
+                    "--require-on-main",
+                    "main",
+                    "--repo-root",
+                    str(self.repo),
+                ]
+            ),
+            1,
+        )
+
+    def test_the_flag_needs_a_tag_to_check(self):
+        with self.assertRaises(SystemExit):
+            check_version.main(["--not-older-than", "2.0.12", "--require-on-main", "main"])
+
+
 class ReleaseDocsTest(unittest.TestCase):
     def test_release_docs_state_the_rule(self):
         """The rule the checks enforce must stay documented."""

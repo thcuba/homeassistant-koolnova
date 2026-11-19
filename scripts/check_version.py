@@ -17,6 +17,11 @@ Two checks, both usable from CI and by hand:
     # any other moment: the manifest must not be older than the newest tag
     python scripts/check_version.py --not-older-than 2.0.9
 
+Both can be combined with ``--require-on-main BRANCH``, which additionally asserts that the tag points
+to a commit reachable from ``BRANCH`` (``origin/main`` in CI). Without it a tag cut on a side branch
+with a matching manifest would pass and HACS would hand out code that was never merged - the manifest
+comparison alone cannot see where the tag sits.
+
 Exit status is 0 when the check passes and 1 when it fails, with the reason on stderr.
 """
 
@@ -24,11 +29,46 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "custom_components" / "koolnova" / "manifest.json"
+
+
+def _git(args: list[str], repo_root: Path) -> subprocess.CompletedProcess:
+    """Run git in ``repo_root``; a missing git is reported as a failed run, not an exception."""
+    try:
+        return subprocess.run(
+            ["git", *args], cwd=str(repo_root), capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(args, 127, "", "git non trovato")
+
+
+def check_tag_is_reachable(tag: str, branch: str, repo_root: Path = REPO_ROOT) -> str | None:
+    """Verify that ``tag`` points to a commit reachable from ``branch``.
+
+    Returns ``None`` when the tag is on the branch, or a human-readable reason when it is not.
+    """
+    resolved = _git(["rev-parse", "--verify", f"refs/tags/{tag}"], repo_root)
+    if resolved.returncode != 0:
+        return f"il tag '{tag}' non esiste nel repository locale, quindi non posso verificarne la provenienza"
+
+    commit = resolved.stdout.strip()
+    ancestor = _git(["merge-base", "--is-ancestor", commit, branch], repo_root)
+    if ancestor.returncode == 0:
+        return None
+    if ancestor.returncode == 1:
+        return (
+            f"il tag '{tag}' punta a {commit[:8]}, che non e' raggiungibile da '{branch}': "
+            f"HACS distribuirebbe codice mai mergiato in {branch}"
+        )
+    return (
+        f"non riesco a verificare '{tag}' contro '{branch}': {ancestor.stderr.strip() or 'git ha fallito'}.\n"
+        f"        Nei cloni poco profondi serve la cronologia completa (fetch-depth: 0) e il ref '{branch}'."
+    )
 
 
 def read_manifest_version(manifest_path: Path = MANIFEST_PATH) -> str:
@@ -70,7 +110,23 @@ def main(argv: list[str] | None = None) -> int:
         help="versione piu' recente nota: il manifest non puo' essere piu' vecchio",
     )
     parser.add_argument("--manifest", type=Path, default=MANIFEST_PATH, help="percorso del manifest.json")
+    parser.add_argument(
+        "--require-on-main",
+        dest="require_on_main",
+        metavar="BRANCH",
+        help="richiede che il tag punti a un commit raggiungibile da BRANCH (es. origin/main); "
+        "un tag su un branch laterale con il manifest giusto passerebbe comunque il solo confronto",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=REPO_ROOT,
+        help="radice del repository git usata per verificare la provenienza del tag",
+    )
     args = parser.parse_args(argv)
+
+    if args.require_on_main is not None and args.tag is None:
+        parser.error("--require-on-main richiede --tag: la provenienza si verifica su un tag")
 
     try:
         version = read_manifest_version(args.manifest)
@@ -90,6 +146,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         print(f"OK: tag '{args.tag}' e manifest '{version}' coincidono.")
+        if args.require_on_main is not None:
+            problem = check_tag_is_reachable(args.tag, args.require_on_main, args.repo_root)
+            if problem is not None:
+                print(f"ERRORE: {problem}", file=sys.stderr)
+                return 1
+            print(f"OK: il tag '{args.tag}' e' raggiungibile da '{args.require_on_main}'.")
         return 0
 
     try:

@@ -7,31 +7,44 @@ name: Release version
 # installs the release, still sees the old version declared, and asks again.
 #
 # The repo was in exactly that state: manifest at 2.0.4 while releases went to 2.0.9, with nothing
-# anywhere comparing the two. These two jobs are that comparison.
+# anywhere comparing the two. These jobs are that comparison.
 
 on:
   push:
     tags:
       - "*"
   pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versione che si sta per taggare (es. 2.0.13). Valida soltanto: non crea tag né release."
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  # A tag *is* the release, so on a tag build the two must be identical.
+  # A tag *is* the release, so on a tag build the two must be identical - and the tagged commit must
+  # come from main. A tag cut on a side branch can carry a perfectly matching manifest and still hand
+  # HACS code that was never merged, which the manifest comparison alone cannot see.
   tag-matches-manifest:
     name: Tag matches manifest
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check the tag against manifest.json
+        with:
+          # The provenance check walks the history, so the full clone is required.
+          fetch-depth: 0
+      - name: Make sure origin/main exists locally
+        run: git fetch --no-tags origin main
+      - name: Check the tag against manifest.json and against main
         env:
           # Through the environment, not interpolated into the script: a tag name is repository
           # input, and inline interpolation would let it break out of the command.
           REF_NAME: ${{ github.ref_name }}
-        run: python scripts/check_version.py --tag "$REF_NAME"
+        run: python scripts/check_version.py --tag "$REF_NAME" --require-on-main origin/main
 
   # Before tagging, the manifest must at least not have fallen behind the newest release.
   manifest-not-behind:
@@ -52,3 +65,18 @@ jobs:
           fi
           echo "Tag piu' recente: $latest"
           python scripts/check_version.py --not-older-than "$latest"
+
+  # Manual run: the same manifest comparison, against a version that has not been tagged yet. Useful
+  # to answer "is 2.0.13 safe to tag?" before creating anything - it writes nothing and releases
+  # nothing, on purpose: releasing stays a deliberate act.
+  validate-upcoming-version:
+    name: Validate an upcoming version
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the version against manifest.json
+        env:
+          # Through the environment, quoted in the script: this is user input from the manual run.
+          VERSION: ${{ inputs.version }}
+        run: python scripts/check_version.py --tag "$VERSION"
