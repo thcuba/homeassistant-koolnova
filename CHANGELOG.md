@@ -7,6 +7,16 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ## [Unreleased]
 
+### Changed
+
+- **The release check now refuses a tag whose commit is not on `main`.** The version comparison reads
+  the `manifest.json` *inside* the tag, so a tag cut on a side branch with a matching manifest passed —
+  and HACS would have served code that was never merged. The tag build runs
+  `check_version.py --tag <tag> --require-on-main origin/main` (the option is opt-in, so local use and
+  the pull-request job are unchanged).
+- **A version can be validated before tagging**, from *Actions → Release version → Run workflow*. It
+  reuses the same comparison and creates nothing: no tag, no release.
+
 ## [2.0.12] — 2026-11-16
 
 ### Added
