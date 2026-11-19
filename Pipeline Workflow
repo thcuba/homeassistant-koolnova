@@ -1,0 +1,179 @@
+name: Release Pipeline
+
+on: 
+  push:
+    tags:
+      - 'v*.*.*' # Trigger su nuovi tag SemVer (e.g., v1.0.0, v2.1.5)
+  workflow_dispatch: # Permette l'attivazione manuale del workflow
+    inputs:
+      version:
+        description: 'Specifica la versione da rilasciare (e.g., 1.0.0). Obbligatorio se non attivato da tag.'
+        required: false
+        type: string
+      prerelease:
+        description: 'È una pre-release?'
+        required: false
+        type: boolean
+        default: false
+      skip_ci_checks:
+        description: 'Salta i controlli di linting e testing (USARE CON CAUTELA!)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  validate_and_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necessario per creare release e tag
+      pull-requests: write # Utile per linkare PR se necessario in futuro
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessario per la cronologia Git (e.g., per il changelog o la versione)
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Versione Python consigliata per Home Assistant e consistente per CI/Release
+          cache: 'pip' # Abilita la cache per le dipendenze pip
+
+      - name: Installa dipendenze di sviluppo e release
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 pylint mypy pytest pytest-asyncio # Dipendenze per CI/Sviluppo
+          pip install semver # Per la manipolazione delle versioni
+          pip install requests # Esempio per interazione API in script di release se necessario
+
+      - name: Controlla se saltare i controlli CI
+        id: check_skip_ci
+        run: echo "skip_ci_checks=${{ github.event.inputs.skip_ci_checks }}" >> $GITHUB_OUTPUT
+
+      # --- Inizio: Controlli CI Integrati (indirizza "Python execution exception") ---
+      - name: Esegui Black formatter check
+        if: steps.check_skip_ci.outputs.skip_ci_checks != 'true'
+        run: black --check .
+
+      - name: Esegui Flake8 linter
+        if: steps.check_skip_ci.outputs.skip_ci_checks != 'true'
+        run: flake8 .
+
+      - name: Esegui Pylint linter
+        if: steps.check_skip_ci.outputs.skip_ci_checks != 'true'
+        # Mira specificamente ai file del componente 'koolnova'
+        run: pylint $(find custom_components/koolnova -name "*.py" | xargs)
+
+      - name: Esegui Mypy type checker
+        if: steps.check_skip_ci.outputs.skip_ci_checks != 'true'
+        run: mypy custom_components/koolnova # Controlla solo la directory del componente
+
+      - name: Esegui Pytest tests
+        if: steps.check_skip_ci.outputs.skip_ci_checks != 'true'
+        run: pytest
+      # --- Fine: Controlli CI Integrati ---
+
+      - name: Determina versione di release
+        id: get_version
+        run: |
+          RELEASE_VERSION=""
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Attivato da push di tag (e.g., v1.2.3)
+            RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+            echo "Release attivata da tag: v${RELEASE_VERSION}"
+          elif [[ "${{ github.event.inputs.version }}" != "" ]]; then
+            # Attivato manualmente con input della versione
+            RELEASE_VERSION="${{ github.event.inputs.version }}"
+            echo "Release manuale con versione input: ${RELEASE_VERSION}"
+          else
+            echo "Errore: Impossibile determinare la versione di release. Si prega di attivare con un tag (vX.Y.Z) o fornire un input 'version'."
+            exit 1
+          fi
+
+          # Validazione base del formato della versione tramite script Python
+          python -c "
+import sys
+import semver
+try:
+    semver.Version.parse('$RELEASE_VERSION')
+    print('Formato versione valido.')
+except ValueError as e:
+    print(f'Formato versione non valido: {e}', file=sys.stderr)
+    sys.exit(1)
+"
+
+          echo "RELEASE_VERSION=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "::notice file=release.yml::Versione di release determinata: ${RELEASE_VERSION}"
+        env:
+          RELEASE_VERSION: "" # Inizializza per sicurezza
+
+      - name: Verifica pre-release (Script Python personalizzato)
+        run: |
+          echo "Esecuzione script di verifica pre-release personalizzato..."
+          python -c "
+import sys
+import os
+import json
+
+# Questo è il punto in cui inserire controlli specifici del componente Home Assistant
+# Esempio: Verifica la presenza e la struttura di manifest.json
+MANIFEST_PATH = './custom_components/koolnova/manifest.json'
+if not os.path.exists(MANIFEST_PATH):
+    print(f'Errore: File manifest.json non trovato in {MANIFEST_PATH}', file=sys.stderr)
+    sys.exit(1)
+
+try:
+    with open(MANIFEST_PATH, 'r') as f:
+        manifest = json.load(f)
+    assert 'domain' in manifest, 'manifest.json manca la chiave "domain"'
+    assert 'name' in manifest, 'manifest.json manca la chiave "name"'
+    assert 'version' in manifest, 'manifest.json manca la chiave "version"'
+    
+    print(f'Manifest domain: {manifest.get('domain')}, name: {manifest.get('name')}, version: {manifest.get('version')}')
+
+except (json.JSONDecodeError, AssertionError) as e:
+    print(f'Errore durante la verifica del manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+
+print('Verifica pre-release completata con successo.')
+"
+        # Questo è un altro punto in cui potrebbe verificarsi una "Python execution exception"
+        # se la logica dello script fallisce (e.g., file non trovato, JSON malformato, asserzione fallita).
+
+      - name: Crea archivio ZIP del componente
+        run: |
+          # Creare un archivio ZIP della directory del componente per l'asset di release
+          zip -r koolnova.zip custom_components/koolnova
+
+      - name: Crea GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.RELEASE_VERSION }}
+          name: Release v${{ steps.get_version.outputs.RELEASE_VERSION }}
+          body: |
+            ## Release v${{ steps.get_version.outputs.RELEASE_VERSION }} per l'integrazione Home Assistant Koolnova
+
+            Questa release include:
+            - Pipeline CI/CD migliorata per una maggiore qualità del codice e affidabilità.
+            - Controlli automatizzati per linting, formattazione, type checking e test unitari Python.
+            - Processo di release robusto che assicura la pubblicazione di una versione stabile.
+            - Correzioni per potenziali "Python execution exceptions" durante gli step di CI/Release.
+
+            Per le istruzioni di installazione e maggiori dettagli, si prega di fare riferimento al README del progetto.
+
+            [Visualizza Changelog Completo](https://github.com/${{ github.repository }}/compare/v${{ steps.get_version.outputs.RELEASE_VERSION }}...${{ github.sha }})
+          draft: false # La release non sarà una bozza
+          prerelease: ${{ github.event.inputs.prerelease || false }} # Imposta come pre-release se l'input è true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Fornito automaticamente da GitHub Actions
+
+      - name: Carica file del componente come asset di release
+        uses: actions/upload-release-asset@v1
+        if: success() # Carica l'asset solo se la creazione della release ha avuto successo
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./koolnova.zip # Percorso dell'archivio ZIP creato precedentemente
+          asset_name: koolnova-${{ steps.get_version.outputs.RELEASE_VERSION }}.zip
+          asset_content_type: application/zip
