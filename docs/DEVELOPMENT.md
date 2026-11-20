@@ -68,6 +68,15 @@ also on repeated failed logins. Hence `MIN_UPDATE_INTERVAL` is 30 s (the coordin
 more aggressive configurations to it) and a 300 s cooldown exists after a failed login. **Do not
 lower these limits.**
 
+`MIN_UPDATE_INTERVAL` only spaces whole polling cycles, and that was not enough: inside one cycle
+the coordinator issues 3 + N requests back to back (the hubs through a `ThreadPoolExecutor`), and
+`set_all_zones_mode` fires one PATCH per zone through `asyncio.gather`. Those bursts are what the
+ban reacts to, so `KoolnovaClientSession._wait_for_request_slot` enforces `MIN_REQUEST_INTERVAL`
+(10 s) between any two calls, auth included. The lock is held during the wait on purpose: spacing
+without serialising would still let two requests overlap (and `requests.Session` is shared across
+threads anyway). The brake lives on the class, not on the instance, because the ban is per IP —
+two config entries must not get two independent budgets.
+
 ## Tests
 
 The vendored client is covered by `tests/`, which runs on the standard library alone — no pytest,

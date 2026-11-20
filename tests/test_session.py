@@ -12,7 +12,13 @@ from requests.exceptions import ConnectionError
 from requests.exceptions import HTTPError
 from requests.exceptions import Timeout
 
+from koolnova_api.session import MIN_REQUEST_INTERVAL
 from koolnova_api.session import KoolnovaClientSession
+
+# The request throttle is real production behaviour (see RequestThrottleTest): it would make
+# every test wait MIN_REQUEST_INTERVAL before each call. Off for the suite, restored by the
+# tests that exercise it.
+KoolnovaClientSession._throttle_interval = 0.0
 
 
 def _ok_response(payload=None, status=200):
@@ -376,3 +382,48 @@ class AuthRetryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RequestThrottleTest(unittest.TestCase):
+    """Il freno fra le richieste: e' quello che protegge dal ban per IP.
+
+    Koolnova banna l'IP quando il traffico arriva a raffica, e nell'integrazione le raffiche
+    esistevano: un ciclo completo fa 3 + N richieste di fila, e "tutte le zone" ne lancia una
+    per zona nello stesso istante. Questi test fissano il comportamento del freno.
+    """
+
+    def setUp(self):
+        KoolnovaClientSession._throttle_interval = MIN_REQUEST_INTERVAL
+        KoolnovaClientSession._last_http_call = 0.0
+        self.addCleanup(self._restore)
+
+    @staticmethod
+    def _restore():
+        KoolnovaClientSession._throttle_interval = 0.0
+        KoolnovaClientSession._last_http_call = 0.0
+
+    def test_the_first_request_is_not_delayed(self):
+        with patch("koolnova_api.session.time.sleep") as sleep:
+            KoolnovaClientSession._wait_for_request_slot()
+        sleep.assert_not_called()
+
+    def test_a_second_request_waits_only_the_remaining_part(self):
+        """Non si ricomincia il conteggio: si aspetta quel che manca all'intervallo."""
+        with patch("koolnova_api.session.time.monotonic", side_effect=[1000.0, 1002.0, 1002.0]):
+            with patch("koolnova_api.session.time.sleep") as sleep:
+                KoolnovaClientSession._wait_for_request_slot()
+                KoolnovaClientSession._wait_for_request_slot()
+        sleep.assert_called_once()
+        self.assertAlmostEqual(sleep.call_args[0][0], MIN_REQUEST_INTERVAL - 2.0)
+
+    def test_a_request_after_a_full_interval_does_not_wait(self):
+        with patch("koolnova_api.session.time.monotonic", side_effect=[1000.0, 1015.0, 1015.0]):
+            with patch("koolnova_api.session.time.sleep") as sleep:
+                KoolnovaClientSession._wait_for_request_slot()
+                KoolnovaClientSession._wait_for_request_slot()
+        sleep.assert_not_called()
+
+    def test_the_brake_is_shared_by_the_whole_process(self):
+        """Due config entry non devono avere due budget separati: il ban e' per IP."""
+        self.assertIn("_last_http_call", vars(KoolnovaClientSession))
+        self.assertIn("_throttle_interval", vars(KoolnovaClientSession))
