@@ -2,6 +2,7 @@
 """Session manager for the Koolnova REST API in order to maintain authentication token between calls."""
 
 import logging
+import threading
 import time
 from typing import Optional
 from urllib.parse import quote_plus
@@ -30,6 +31,15 @@ MIN_REQUEST_TIMEOUT = 45
 # Session keepalive: refresh token if last request was longer ago than this
 SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
 
+# Minimum distance between two HTTP requests, in seconds.
+# Koolnova bans the *IP*, not the account, and the ban is triggered by bursts: a single
+# "full" cycle issues 3 + N requests back to back and "set all zones" fires one PATCH per
+# zone at the same instant (asyncio.gather). update_interval only spaces whole cycles, so
+# without this every burst went out as fast as the network allowed.
+# 10 s is a deliberate compromise for now: it flattens the bursts while keeping multi-zone
+# commands tolerable (5 zones = ~40 s instead of 2 min at the 30 s ban threshold).
+MIN_REQUEST_INTERVAL = 10.0
+
 
 class KoolnovaClientSession(Session):
     """HTTP session manager for the Koolnova API.
@@ -44,6 +54,32 @@ class KoolnovaClientSession(Session):
     """
 
     host: str = KOOLNOVA_API_URL
+
+    # Class-level on purpose: the ban applies to the IP, so the brake must be shared by every
+    # session in the process. Two config entries (or a refresh) must not get two independent
+    # budgets, or the intervals would add up to a burst anyway.
+    _throttle_lock = threading.Lock()
+    _last_http_call: float = 0.0
+    _throttle_interval: float = MIN_REQUEST_INTERVAL
+
+    @classmethod
+    def _wait_for_request_slot(cls) -> None:
+        """Block until _throttle_interval has passed since the last request.
+
+        The lock is held *during* the wait, so requests that start together (the
+        ``asyncio.gather`` of a multi-zone command, the ``ThreadPoolExecutor`` over the hubs)
+        leave one at a time instead of all at once. That serialisation is the point: spacing
+        them without serialising would still let two requests overlap.
+        """
+        with cls._throttle_lock:
+            if cls._last_http_call:
+                remaining = cls._throttle_interval - (time.monotonic() - cls._last_http_call)
+                if remaining > 0:
+                    _LOGGER.debug(
+                        "Request throttle: waiting %.1fs before the next call", remaining
+                    )
+                    time.sleep(remaining)
+            cls._last_http_call = time.monotonic()
 
     def __init__(self, username: str, password: str, email: Optional[str] = None,
                  max_retries: int = DEFAULT_MAX_RETRIES,
@@ -94,6 +130,7 @@ class KoolnovaClientSession(Session):
         for attempt in range(auth_max_attempts):
             try:
                 auth_timeout = max(float(self.request_timeout), MIN_REQUEST_TIMEOUT)
+                self._wait_for_request_slot()
                 response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=auth_timeout)
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, auth_max_attempts, e)
@@ -254,6 +291,7 @@ class KoolnovaClientSession(Session):
 
         for attempt in range(retries + 1):
             try:
+                self._wait_for_request_slot()
                 response = super().request(method, url, headers=headers_auth, **kwargs)
                 self.last_request_time = time.time()
 

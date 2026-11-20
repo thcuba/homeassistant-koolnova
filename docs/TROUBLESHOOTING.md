@@ -10,6 +10,13 @@ Koolnova **bans your IP automatically** if their API receives more than one requ
 integration over and over and do not lower the update interval: wait a few minutes between
 attempts. A ban shows up as connection errors that persist even though the credentials are correct.
 
+From now on the integration also **spaces its own requests**: no two HTTP calls leave less than
+10 s apart, login included, and the brake is shared by every entity and service, so a multi-zone
+command is sent one zone at a time (`Request throttle: waiting …` in the debug log). This removes
+the bursts, which were the shape of traffic most likely to look like abuse — but it does not make
+heavy automation free, and 10 s stays below the 30 s ban threshold on purpose, to keep commands
+tolerable.
+
 ## The integration cannot connect / 404 errors in the logs
 
 A `404` from this API almost never means the route does not exist: it means the request did not
@@ -17,7 +24,7 @@ look like it came from a browser. The API requires a modern Chrome `User-Agent` 
 `sec-ch-ua*` / `sec-fetch-*` headers (see `koolnova_api/const.py`).
 
 If it starts failing out of nowhere without any change on your side, Koolnova has most likely
-tightened that filter again � it happened in May 2026 (issue #4). Please open an issue.
+tightened that filter again — it happened in May 2026 (issue #4). Please open an issue.
 
 ## "Authentication failed" during setup
 
@@ -35,7 +42,7 @@ The account has no active project. Create one in the Koolnova app first.
 
 In order of likelihood:
 
-1. The project is offline (`is_online: false`) � check it in the official app.
+1. The project is offline (`is_online: false`) — check it in the official app.
 2. The coordinator cannot update: check the logs.
 3. Authentication problem or expired token; restart Home Assistant.
 

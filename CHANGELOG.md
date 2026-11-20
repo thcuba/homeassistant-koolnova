@@ -9,6 +9,21 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ### Changed
 
+- **The integration now spaces its own requests: at least 10 s between any two API calls.** The
+  ban Koolnova applies is per IP and is triggered by bursts, and the bursts were real: a full
+  refresh issues `projects/` + `topics/sensors/` + `modules/` + one `hub/{id}/state` per hub back to
+  back (the hubs through a `ThreadPoolExecutor`), and `koolnova.set_all_zones_mode` fires one PATCH
+  per zone at the same instant through `asyncio.gather`. `update_interval` only spaced whole cycles,
+  so none of that shaping existed. `KoolnovaClientSession` now holds a process-wide brake
+  (`MIN_REQUEST_INTERVAL = 10 s`) applied to every call, login included, and serialised: requests
+  that start together leave one at a time. The lock is held during the wait, because spacing
+  without serialising would still let two calls overlap. A multi-zone command is therefore slower —
+  five zones become ~40 s instead of instant — which is the intended trade-off, and `docs/API.md`
+  says plainly that 10 s is not by itself the 30 s ban threshold.
+- `docs/TROUBLESHOOTING.md` was not valid UTF-8 (one cp1252 byte); it is now.
+
+### Changed
+
 - **The release check now refuses a tag whose commit is not on `main`.** The version comparison reads
   the `manifest.json` *inside* the tag, so a tag cut on a side branch with a matching manifest passed —
   and HACS would have served code that was never merged. The tag build runs

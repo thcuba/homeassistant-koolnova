@@ -10,8 +10,8 @@ API. Zones, the project as a whole, and (on legacy accounts) the physical hub ar
 Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
 
 > ⚠️ Koolnova bans your IP automatically if their API receives more than one request every
-> 45 seconds, and also on repeated failed logins. The integration enforces that minimum interval
-> and backs off after a failed login on purpose — do not force it lower.
+> 30 seconds, and also on repeated failed logins. The integration never sends two requests less
+> than 10 s apart and backs off for 300 s after a failed login — do not force these lower.
 
 ## Features
 
@@ -34,6 +34,9 @@ Requires Home Assistant 2025.12.0 or newer and a Koolnova app account.
   errors, rate limiting (429) and server errors (5xx); auto-refreshes the session token on 401;
   a 50 s per-request timeout, floored at 45 s; falls back to the `/devices/` endpoint when the
   main ones fail
+- ⏱️ **Request throttle**: two API calls never leave less than 10 s apart, shared by the whole
+  process. A full refresh (3 + N requests) and a multi-zone command (one PATCH per zone) reach
+  Koolnova spread out instead of in the same instant — which is what triggers the IP ban
 - 🔄 **Staggered polling**: sensors every cycle, the more expensive project list cached
 - 🎛️ **Setup and intervals configurable from the UI**
 - 🌍 Translations: English, Spanish, Italian
