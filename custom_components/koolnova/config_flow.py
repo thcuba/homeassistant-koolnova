@@ -33,6 +33,7 @@ from .const import (
     MAX_CONFIGURABLE_TEMP,
     DEFAULT_TEMP_PRECISION,
     AVAILABLE_HVAC_MODES,
+    PROJECT_HVAC_MODES,
     AVAILABLE_TEMP_PRECISIONS,
     CONF_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
@@ -258,9 +259,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Required(CONF_PROJECT_HVAC_MODES, default=current_project_modes): selector.SelectSelector(
                     selector.SelectSelectorConfig(
+                        # Solo le modalita' che il progetto sa eseguire: offrire `auto` qui
+                        # dava un comando inerte (issue #96, verifica di @DaniCai130).
                         options=[
                             selector.SelectOptionDict(value=mode.value, label=mode.value.title())
-                            for mode in AVAILABLE_HVAC_MODES
+                            for mode in PROJECT_HVAC_MODES
                         ],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,

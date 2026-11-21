@@ -5,6 +5,19 @@ Every published version of the integration. The format follows
 [SemVer](https://semver.org/): the git tag and the `"version"` field in `manifest.json` are always
 identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
+## [Unreleased]
+
+### Fixed
+
+- **The project entity no longer offers `auto`.** There is no `auto` code in the project payload,
+  so selecting it sent nothing at all and the only trace was a line in the log — reported by
+  @DaniCai130, who tested 2.0.13 against the app ("auto → no effect: the project stays in the
+  previous mode"). `PROJECT_HVAC_MODES` is now derived from `KOOLNOVA_PROJECT_MODE_CODE` (cool,
+  heat) plus `off`: the options selector lists only those, and saved options carrying anything else
+  are filtered out, falling back to the default rather than leaving the entity with no mode to
+  offer. **Zones keep `auto`** — their `status 03` really exists — and so does the fan: `auto` as a
+  fan speed is a different field and works, as @DaniCai130 pointed out.
+
 ## [2.0.13] — 2026-11-20
 
 ### Changed

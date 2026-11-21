@@ -112,6 +112,38 @@ KOOLNOVA_PROJECT_MODE_CODE = {
     (HVACMode.HEAT, HEAT_SOURCE_BOTH): KOOLNOVA_MODE_HEAT_BOTH,
 }
 
+# The modes the project can actually execute: the directions that map to a code, plus `off`,
+# which is not a code but the `is_stop` flag. `auto` is deliberately absent - the project
+# payload has no code that represents it, so offering it in `hvac_modes` gives the user a
+# command that silently does nothing (reported by @DaniCai130 after trying it in the app).
+# Derived from KOOLNOVA_PROJECT_MODE_CODE so a new mapping shows up here by itself.
+PROJECT_HVAC_MODES = [
+    mode
+    for mode in (HVACMode.COOL, HVACMode.HEAT, HVACMode.OFF)
+    if mode is HVACMode.OFF or any(hvac == mode for hvac, _source in KOOLNOVA_PROJECT_MODE_CODE)
+]
+
+
+def filter_project_hvac_modes(values):
+    """Keep only the modes the project can execute, in a stable order.
+
+    Saved options can carry values the project cannot run - `auto` from an older
+    configuration, or something typed by hand. Exposing them in `hvac_modes` would show a
+    command that does nothing, so they are dropped. When nothing valid is left the default is
+    returned instead of leaving the entity without a single mode to offer.
+    """
+    kept = []
+    for value in values or []:
+        try:
+            mode = HVACMode(value)
+        except ValueError:
+            continue  # valore sconosciuto: scartato, non deve rompere l'entita'
+        if mode in PROJECT_HVAC_MODES and mode not in kept:
+            kept.append(mode)
+    order = {mode: index for index, mode in enumerate(PROJECT_HVAC_MODES)}
+    return sorted(kept, key=order.__getitem__) if kept else list(DEFAULT_PROJECT_HVAC_MODES)
+
+
 # Presets exposed on the project entity: the five entries the app offers. Each is a
 # (mode, circuit) pair, so picking one sends its code directly instead of having to
 # set a global heat source first. Names are the stable keys used by the translations.

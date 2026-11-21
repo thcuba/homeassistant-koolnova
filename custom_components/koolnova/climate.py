@@ -46,6 +46,7 @@ from .const import (
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TEMP_PRECISION,
+    filter_project_hvac_modes,
 )
 from .coordinator import KoolnovaDataUpdateCoordinator
 
@@ -150,9 +151,9 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         self._global_fan_mode = FAN_AUTO
 
     def _get_project_hvac_modes(self):
-        """Get configured project HVAC modes."""
+        """Get configured project HVAC modes, dropping any the project cannot execute."""
         mode_values = self._get_config_value(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES])
-        return [HVACMode(value) for value in mode_values]
+        return filter_project_hvac_modes(mode_values)
 
     @property
     def hvac_modes(self):
