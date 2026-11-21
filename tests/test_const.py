@@ -305,6 +305,20 @@ class ProjectModeSelectionTest(unittest.TestCase):
         kept = const.filter_project_hvac_modes(["off", "heat", "cool"])
         self.assertEqual([mode.value for mode in kept], ["cool", "heat", "off"])
 
+    def test_zones_still_offer_auto(self):
+        """Il taglio riguarda il solo progetto: lo status 03 delle zone esiste davvero."""
+        self.assertIn(const.HVACMode.AUTO, const.AVAILABLE_HVAC_MODES)
+
+    def test_the_fan_auto_is_untouched(self):
+        """`auto` come velocita' ventola e' un'altra cosa e funziona.
+
+        Chiarito da @DaniCai130: nell'app Koolnova "Auto" e' una velocita' della ventola.
+        Questi test esistono perche' un domani nessuno "ripulisca" auto anche dalle ventole
+        dopo averlo tolto dalle modalita' del progetto.
+        """
+        self.assertEqual(const.KOOLNOVA_TO_FAN["4"], const.FAN_AUTO)
+        self.assertEqual(const.FAN_TO_KOOLNOVA[const.FAN_AUTO], "4")
+
     def test_an_empty_selection_is_handled(self):
         self.assertEqual(
             [mode.value for mode in const.filter_project_hvac_modes(None)],
