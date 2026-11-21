@@ -264,5 +264,53 @@ class PlatformsTest(unittest.TestCase):
         self.assertEqual(const.PLATFORMS, ["climate", "binary_sensor", "switch", "sensor"])
 
 
+class ProjectModeSelectionTest(unittest.TestCase):
+    """Le modalita' offerte per il progetto devono essere quelle che il progetto esegue.
+
+    Offrire `auto` non era innocuo: non esiste un codice `auto` nel payload del progetto, quindi
+    sceglierlo non mandava nulla e l'unica traccia era una riga di log (issue #96, provato da
+    @DaniCai130 nell'app: "auto -> no effect").
+    """
+
+    def test_the_project_offers_only_modes_it_can_execute(self):
+        values = [mode.value for mode in const.PROJECT_HVAC_MODES]
+        self.assertEqual(values, ["cool", "heat", "off"])
+        self.assertNotIn("auto", values)
+
+    def test_every_offered_mode_but_off_has_a_code(self):
+        """Se una modalita' appare nella lista, deve esistere una combinazione che la scriva."""
+        codable = {mode for mode, _source in const.KOOLNOVA_PROJECT_MODE_CODE}
+        for mode in const.PROJECT_HVAC_MODES:
+            if mode == const.HVACMode.OFF:
+                continue
+            self.assertIn(mode, codable, f"{mode} e' offerta ma non ha nessun codice")
+
+    def test_auto_is_dropped_from_saved_options(self):
+        kept = const.filter_project_hvac_modes(["auto", "cool"])
+        self.assertEqual([mode.value for mode in kept], ["cool"])
+
+    def test_options_with_nothing_valid_fall_back_to_the_default(self):
+        """Un'entita' senza modalita' sarebbe peggio di un default: si ricade sul default."""
+        kept = const.filter_project_hvac_modes(["auto"])
+        self.assertEqual(
+            [mode.value for mode in kept],
+            [mode.value for mode in const.DEFAULT_PROJECT_HVAC_MODES],
+        )
+
+    def test_duplicates_and_unknown_values_do_not_break_the_list(self):
+        kept = const.filter_project_hvac_modes(["heat", "heat", "boh", "off"])
+        self.assertEqual([mode.value for mode in kept], ["heat", "off"])
+
+    def test_the_order_is_stable_regardless_of_how_the_options_are_saved(self):
+        kept = const.filter_project_hvac_modes(["off", "heat", "cool"])
+        self.assertEqual([mode.value for mode in kept], ["cool", "heat", "off"])
+
+    def test_an_empty_selection_is_handled(self):
+        self.assertEqual(
+            [mode.value for mode in const.filter_project_hvac_modes(None)],
+            [mode.value for mode in const.DEFAULT_PROJECT_HVAC_MODES],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
