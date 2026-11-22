@@ -41,6 +41,78 @@ SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
 MIN_REQUEST_INTERVAL = 10.0
 
 
+class _RequestThrottle:
+    """Process-wide rate limiter that hands out one request slot at a time.
+
+    Two things are needed to stay under the ban threshold:
+
+    * spacing - consecutive slots are at least ``interval`` apart;
+    * serialisation - a slot is never handed out while another request is still in
+      flight, otherwise two requests could overlap and arrive as a burst anyway.
+
+    The second part is why the lock is *not* held while waiting: waiters queue on
+    the condition, and only the one that gets the slot runs. Holding the lock across
+    ``sleep`` also made every waiter wake up in turn, re-sleeping the full interval
+    for nothing, and it serialised unrelated threads (a blocked poller could stall a
+    user command). The ban applies to the IP, so the state is shared by the whole
+    process: two config entries must not get two independent budgets.
+    """
+
+    def __init__(self, interval: float = MIN_REQUEST_INTERVAL) -> None:
+        self._interval = interval
+        self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
+        self._last_started = 0.0
+        self._in_flight = False
+
+    @property
+    def interval(self) -> float:
+        """Minimum distance between two request slots, in seconds."""
+        return self._interval
+
+    def restore_last_started(self, last_started: float) -> None:
+        """Adopt a previously recorded start time (keeps the spacing across rebuilds)."""
+        with self._condition:
+            self._last_started = last_started
+
+    def wait_for_slot(self) -> float:
+        """Block until a slot is free, then mark it busy for the caller.
+
+        Returns the monotonic time at which the slot was granted.
+        """
+        with self._condition:
+            while True:
+                now = time.monotonic()
+                remaining = 0.0
+                if self._in_flight:
+                    # Another request is running: wait for its release notification.
+                    self._condition.wait()
+                    continue
+                if self._last_started:
+                    remaining = self._interval - (now - self._last_started)
+                if remaining <= 0:
+                    break
+                _LOGGER.debug("Request throttle: waiting %.1fs before the next call", remaining)
+                self._condition.wait(remaining)
+            granted = time.monotonic()
+            self._last_started = granted
+            self._in_flight = True
+            return granted
+
+    def release_slot(self) -> None:
+        """Mark the in-flight request as finished and wake the next waiter."""
+        with self._condition:
+            self._in_flight = False
+            self._condition.notify_all()
+
+    def reset(self) -> None:
+        """Forget the spacing state (tests and explicit re-synchronisation)."""
+        with self._condition:
+            self._last_started = 0.0
+            self._in_flight = False
+            self._condition.notify_all()
+
+
 class KoolnovaClientSession(Session):
     """HTTP session manager for the Koolnova API.
 
@@ -58,28 +130,42 @@ class KoolnovaClientSession(Session):
     # Class-level on purpose: the ban applies to the IP, so the brake must be shared by every
     # session in the process. Two config entries (or a refresh) must not get two independent
     # budgets, or the intervals would add up to a burst anyway.
-    _throttle_lock = threading.Lock()
     _last_http_call: float = 0.0
     _throttle_interval: float = MIN_REQUEST_INTERVAL
+    _throttle_gate: "_RequestThrottle | None" = None
+
+    @classmethod
+    def _throttle(cls) -> _RequestThrottle:
+        """Return the process-wide throttle, rebuilt when its knobs were changed.
+
+        ``_throttle_interval`` and ``_last_http_call`` are class attributes so the brake
+        can be configured/tested from the outside; keeping the gate itself in sync with
+        them here avoids a second source of truth.
+        """
+        gate = cls._throttle_gate
+        if gate is None or gate.interval != cls._throttle_interval:
+            gate = _RequestThrottle(cls._throttle_interval)
+            if cls._last_http_call:
+                gate.restore_last_started(cls._last_http_call)
+            cls._throttle_gate = gate
+        return gate
 
     @classmethod
     def _wait_for_request_slot(cls) -> None:
-        """Block until _throttle_interval has passed since the last request.
+        """Block until a slot is free, then mark it busy until ``_release_request_slot``."""
+        cls._last_http_call = cls._throttle().wait_for_slot()
 
-        The lock is held *during* the wait, so requests that start together (the
-        ``asyncio.gather`` of a multi-zone command, the ``ThreadPoolExecutor`` over the hubs)
-        leave one at a time instead of all at once. That serialisation is the point: spacing
-        them without serialising would still let two requests overlap.
-        """
-        with cls._throttle_lock:
-            if cls._last_http_call:
-                remaining = cls._throttle_interval - (time.monotonic() - cls._last_http_call)
-                if remaining > 0:
-                    _LOGGER.debug(
-                        "Request throttle: waiting %.1fs before the next call", remaining
-                    )
-                    time.sleep(remaining)
-            cls._last_http_call = time.monotonic()
+    @classmethod
+    def _release_request_slot(cls) -> None:
+        """Release the slot taken by ``_wait_for_request_slot``."""
+        cls._throttle().release_slot()
+
+    @classmethod
+    def _reset_throttle(cls) -> None:
+        """Forget the spacing state, e.g. between tests."""
+        gate = cls._throttle()
+        gate.reset()
+        cls._last_http_call = 0.0
 
     def __init__(self, username: str, password: str, email: Optional[str] = None,
                  max_retries: int = DEFAULT_MAX_RETRIES,
@@ -131,7 +217,10 @@ class KoolnovaClientSession(Session):
             try:
                 auth_timeout = max(float(self.request_timeout), MIN_REQUEST_TIMEOUT)
                 self._wait_for_request_slot()
-                response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=auth_timeout)
+                try:
+                    response = super().request("POST", KOOLNOVA_AUTH_URL, json=payload, headers=headers_token, timeout=auth_timeout)
+                finally:
+                    self._release_request_slot()
             except Exception as e:
                 _LOGGER.exception("Exception when calling auth endpoint (attempt %d/%d): %s", attempt + 1, auth_max_attempts, e)
                 response = None
@@ -292,7 +381,10 @@ class KoolnovaClientSession(Session):
         for attempt in range(retries + 1):
             try:
                 self._wait_for_request_slot()
-                response = super().request(method, url, headers=headers_auth, **kwargs)
+                try:
+                    response = super().request(method, url, headers=headers_auth, **kwargs)
+                finally:
+                    self._release_request_slot()
                 self.last_request_time = time.time()
 
                 # Handle 401: token expired or invalid -> refresh and retry

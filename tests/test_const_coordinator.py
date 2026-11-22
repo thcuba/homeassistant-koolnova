@@ -168,5 +168,93 @@ class TestKoolnovaCoordinator(unittest.TestCase):
         self.assertEqual(coordinator_instance._project_update_frequency, 20)
 
 
+class TestRequestTimeout(unittest.TestCase):
+    """The timeout option must always reach the HTTP session as a sane float."""
+
+    def test_defaults_when_unset(self):
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout({}, {}),
+            const.DEFAULT_REQUEST_TIMEOUT,
+        )
+
+    def test_options_win_over_data(self):
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout(
+                {const.CONF_REQUEST_TIMEOUT: 60}, {const.CONF_REQUEST_TIMEOUT: 90}
+            ),
+            90.0,
+        )
+
+    def test_falls_back_to_data_when_option_missing(self):
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout(
+                {const.CONF_REQUEST_TIMEOUT: 60}, {}
+            ),
+            60.0,
+        )
+
+    def test_string_value_is_coerced(self):
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout(
+                {}, {const.CONF_REQUEST_TIMEOUT: "75"}
+            ),
+            75.0,
+        )
+
+    def test_clamped_to_allowed_range(self):
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout(
+                {}, {const.CONF_REQUEST_TIMEOUT: 1}
+            ),
+            float(const.MIN_REQUEST_TIMEOUT),
+        )
+        self.assertEqual(
+            KoolnovaDataUpdateCoordinator._get_request_timeout(
+                {}, {const.CONF_REQUEST_TIMEOUT: 9999}
+            ),
+            float(const.MAX_REQUEST_TIMEOUT),
+        )
+
+    def test_invalid_value_uses_default(self):
+        for invalid in ("not-a-number", None, [1]):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(
+                    KoolnovaDataUpdateCoordinator._get_request_timeout(
+                        {}, {const.CONF_REQUEST_TIMEOUT: invalid}
+                    ),
+                    const.DEFAULT_REQUEST_TIMEOUT,
+                )
+
+    def test_client_receives_resolved_timeout(self):
+        hass = MagicMock()
+        config_entry = MagicMock()
+        config_entry.data = {"email": "test@example.com", "password": "password"}
+        config_entry.options = {const.CONF_REQUEST_TIMEOUT: 120}
+        config_entry.entry_id = "test_entry_id"
+
+        coordinator_instance = KoolnovaDataUpdateCoordinator(hass, config_entry)
+
+        self.assertEqual(coordinator_instance.client.request_timeout, 120.0)
+
+    def test_options_update_applies_new_timeout(self):
+        hass = MagicMock()
+        config_entry = MagicMock()
+        config_entry.data = {"email": "test@example.com", "password": "password"}
+        config_entry.options = {const.CONF_REQUEST_TIMEOUT: 60}
+        config_entry.entry_id = "test_entry_id"
+
+        coordinator_instance = KoolnovaDataUpdateCoordinator(hass, config_entry)
+        self.assertEqual(coordinator_instance.client.request_timeout, 60.0)
+
+        config_entry.options = {const.CONF_REQUEST_TIMEOUT: 180}
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(coordinator_instance.async_options_updated())
+        finally:
+            loop.close()
+
+        self.assertEqual(coordinator_instance.client.request_timeout, 180.0)
+
+
 if __name__ == "__main__":
     unittest.main()

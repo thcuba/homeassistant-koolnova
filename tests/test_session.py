@@ -5,6 +5,7 @@ switched it from `email` to `username` and broke authentication for everyone, an
 v1.3.1 had to revert it. These tests pin that behaviour down.
 """
 
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -389,41 +390,126 @@ class RequestThrottleTest(unittest.TestCase):
 
     Koolnova banna l'IP quando il traffico arriva a raffica, e nell'integrazione le raffiche
     esistevano: un ciclo completo fa 3 + N richieste di fila, e "tutte le zone" ne lancia una
-    per zona nello stesso istante. Questi test fissano il comportamento del freno.
+    per zona nello stesso istante. Questi test fissano le due proprieta' del freno: le
+    richieste sono distanziate di MIN_REQUEST_INTERVAL e non si sovrappongono mai.
     """
 
     def setUp(self):
         KoolnovaClientSession._throttle_interval = MIN_REQUEST_INTERVAL
         KoolnovaClientSession._last_http_call = 0.0
+        KoolnovaClientSession._throttle_gate = None
         self.addCleanup(self._restore)
 
     @staticmethod
     def _restore():
         KoolnovaClientSession._throttle_interval = 0.0
         KoolnovaClientSession._last_http_call = 0.0
+        KoolnovaClientSession._throttle_gate = None
+
+    class _FakeClock:
+        """Orologio monotonic controllabile, per non far aspettare davvero i test."""
+
+        def __init__(self, now=1000.0):
+            self.now = now
+
+        def __call__(self):
+            return self.now
+
+    def _gate(self):
+        """Gate con orologio finto; le attese sul rilascio rilasciano subito lo slot."""
+        gate = KoolnovaClientSession._throttle()
+        clock = self._FakeClock()
+        waits = []
+
+        def _wait(timeout=None):
+            waits.append(timeout)
+            if timeout is None:
+                # Attesa del rilascio: la richiesta in volo finisce mentre aspettiamo.
+                gate._in_flight = False
+            else:
+                clock.now += timeout
+
+        patchers = [
+            patch("koolnova_api.session.time.monotonic", clock),
+            patch.object(gate._condition, "wait", side_effect=_wait),
+        ]
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        return gate, clock, waits
 
     def test_the_first_request_is_not_delayed(self):
-        with patch("koolnova_api.session.time.sleep") as sleep:
-            KoolnovaClientSession._wait_for_request_slot()
-        sleep.assert_not_called()
+        gate, clock, waits = self._gate()
+
+        self.assertEqual(gate.wait_for_slot(), clock.now)
+        self.assertEqual(waits, [])
 
     def test_a_second_request_waits_only_the_remaining_part(self):
         """Non si ricomincia il conteggio: si aspetta quel che manca all'intervallo."""
-        with patch("koolnova_api.session.time.monotonic", side_effect=[1000.0, 1002.0, 1002.0]):
-            with patch("koolnova_api.session.time.sleep") as sleep:
-                KoolnovaClientSession._wait_for_request_slot()
-                KoolnovaClientSession._wait_for_request_slot()
-        sleep.assert_called_once()
-        self.assertAlmostEqual(sleep.call_args[0][0], MIN_REQUEST_INTERVAL - 2.0)
+        gate, clock, waits = self._gate()
+
+        gate.wait_for_slot()
+        gate.release_slot()
+        clock.now += 2.0
+        gate.wait_for_slot()
+
+        self.assertEqual(waits, [MIN_REQUEST_INTERVAL - 2.0])
 
     def test_a_request_after_a_full_interval_does_not_wait(self):
-        with patch("koolnova_api.session.time.monotonic", side_effect=[1000.0, 1015.0, 1015.0]):
-            with patch("koolnova_api.session.time.sleep") as sleep:
-                KoolnovaClientSession._wait_for_request_slot()
-                KoolnovaClientSession._wait_for_request_slot()
-        sleep.assert_not_called()
+        gate, clock, waits = self._gate()
+
+        gate.wait_for_slot()
+        gate.release_slot()
+        clock.now += MIN_REQUEST_INTERVAL + 5.0
+        gate.wait_for_slot()
+
+        self.assertEqual(waits, [])
+
+    def test_a_slot_is_never_handed_out_while_another_request_is_in_flight(self):
+        """La serializzazione: due richieste non devono mai sovrapporsi."""
+        gate, clock, waits = self._gate()
+
+        gate.wait_for_slot()
+        in_flight_at = gate._last_started
+        clock.now += MIN_REQUEST_INTERVAL + 1.0  # l'intervallo e' passato, ma lo slot e' occupato
+        gate.wait_for_slot()
+
+        # La prima attesa e' senza timeout: e' il blocco sullo slot occupato, non lo spacing.
+        self.assertEqual(waits[0], None)
+        self.assertGreater(gate._last_started, in_flight_at)
+
+    def test_releasing_a_slot_wakes_the_next_waiter(self):
+        KoolnovaClientSession._throttle_interval = 0.0
+        gate = KoolnovaClientSession._throttle()
+        gate.wait_for_slot()
+
+        started = threading.Event()
+
+        def _next_request():
+            gate.wait_for_slot()
+            started.set()
+
+        worker = threading.Thread(target=_next_request, daemon=True)
+        worker.start()
+        try:
+            self.assertFalse(started.wait(0.2), "lo slot e' stato dato mentre era occupato")
+            gate.release_slot()
+            self.assertTrue(started.wait(5), "il rilascio non ha svegliato chi aspettava")
+        finally:
+            gate.reset()
+            worker.join(timeout=5)
 
     def test_the_brake_is_shared_by_the_whole_process(self):
         """Due config entry non devono avere due budget separati: il ban e' per IP."""
         self.assertIn("_last_http_call", vars(KoolnovaClientSession))
         self.assertIn("_throttle_interval", vars(KoolnovaClientSession))
+        self.assertIn("_throttle_gate", vars(KoolnovaClientSession))
+
+    def test_a_new_interval_keeps_the_spacing_already_elapsed(self):
+        """Cambiare intervallo non deve azzerare il freno (sarebbe una raffica)."""
+        KoolnovaClientSession._last_http_call = 1002.0
+
+        gate = KoolnovaClientSession._throttle()
+
+        self.assertEqual(gate.interval, MIN_REQUEST_INTERVAL)
+        self.assertEqual(gate._last_started, 1002.0)
