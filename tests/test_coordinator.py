@@ -134,6 +134,21 @@ class TestKoolnovaCoordinatorStatus(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AttributeError):
             await self.coordinator.async_update_all_sensors_status("00")
 
+    def test_config_entry_is_passed_to_the_base_coordinator(self):
+        """The base class must get the entry explicitly.
+
+        Without it, `DataUpdateCoordinator` falls back to the deprecated ContextVar
+        lookup and calls `frame.report_usage()`, which raises
+        "Frame helper not set up" wherever the frame helper is not initialised.
+        """
+        base = KoolnovaDataUpdateCoordinator.__mro__[1]
+
+        with patch.object(base, "__init__") as base_init:
+            coordinator = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
+
+        self.assertIs(base_init.call_args.kwargs.get("config_entry"), self.config_entry)
+        self.assertIs(coordinator.config_entry, self.config_entry)
+
 
 if __name__ == "__main__":
     unittest.main()

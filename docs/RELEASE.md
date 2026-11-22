@@ -43,7 +43,7 @@ The `hacs.json` file should include the following fields:
 ```json
 {
   "name": "Koolnova",
-  "homeassistant": "2025.12.0",
+  "homeassistant": "2026.11.0",
   "country": ["ES", "IT"]
 }
 ```
@@ -82,7 +82,7 @@ REPOSITORY_ROOT/
 ```json
 {
   "name": "Koolnova",
-  "homeassistant": "2025.12.0",
+  "homeassistant": "2026.11.0",
   "country": ["ES", "IT"]
 }
 ```

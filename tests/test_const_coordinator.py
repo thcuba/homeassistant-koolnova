@@ -167,6 +167,69 @@ class TestKoolnovaCoordinator(unittest.TestCase):
         self.assertEqual(coordinator_instance.update_interval, timedelta(seconds=80))
         self.assertEqual(coordinator_instance._project_update_frequency, 20)
 
+    def test_the_devices_fallback_carries_the_topic_modes(self):
+        """`topics/sensors/` has no `configurations`, but the devices payload does.
+
+        Without this the entity would go back to "nothing known" every time the
+        fallback path is taken, and stop narrowing the offered modes.
+        """
+        from unittest.mock import patch
+
+        coordinator_instance = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
+        devices = [
+            {
+                "project_name": "Home",
+                "sensor": {
+                    "id": 7,
+                    "name": "Living room",
+                    "status": "00",
+                    "topic_info": {
+                        "id": 42,
+                        "name": "Main topic",
+                        "mode": "1",
+                        "is_stop": False,
+                        "configurations": [
+                            {"key": "TopicExtra", "value": "x"},
+                            {"key": "TopicModes", "value": "0110011"},
+                        ],
+                    },
+                },
+            }
+        ]
+
+        with patch.object(
+            coordinator_instance.client, "get_devices", return_value=devices
+        ), patch.object(
+            KoolnovaDataUpdateCoordinator, "_fetch_hubs", return_value=[]
+        ):
+            data = coordinator_instance._fetch_data_fallback()
+
+        self.assertEqual(data["projects"][0]["Topic_modes"], "0110011")
+
+    def test_the_devices_fallback_tolerates_missing_topic_modes(self):
+        from unittest.mock import patch
+
+        coordinator_instance = KoolnovaDataUpdateCoordinator(self.hass, self.config_entry)
+        devices = [
+            {
+                "project_name": "Home",
+                "sensor": {
+                    "id": 7,
+                    "name": "Living room",
+                    "topic_info": {"id": 42, "mode": "1"},
+                },
+            }
+        ]
+
+        with patch.object(
+            coordinator_instance.client, "get_devices", return_value=devices
+        ), patch.object(
+            KoolnovaDataUpdateCoordinator, "_fetch_hubs", return_value=[]
+        ):
+            data = coordinator_instance._fetch_data_fallback()
+
+        self.assertIsNone(data["projects"][0]["Topic_modes"])
+
 
 class TestRequestTimeout(unittest.TestCase):
     """The timeout option must always reach the HTTP session as a sane float."""

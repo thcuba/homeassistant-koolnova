@@ -20,6 +20,10 @@ PROJECTS_PAYLOAD = {
                 "is_online": True,
                 "eco": False,
                 "last_sync": "2026-07-01T10:00:00Z",
+                "configurations": [
+                    {"key": "TopicExtra", "value": "ignored"},
+                    {"key": "TopicModes", "value": "0110011"},
+                ],
             },
         }
     ]
@@ -85,12 +89,36 @@ class GetProjectTest(ClientTestCase):
                 "Topic_Name": "Main topic",
                 "Topic_id": 42,
                 "Mode": "1",
+                "Topic_modes": "0110011",
                 "is_stop": False,
                 "is_online": True,
                 "eco": False,
                 "last_sync": "2026-07-01T10:00:00Z",
             },
         )
+
+    def test_topic_modes_is_none_when_the_topic_does_not_expose_it(self):
+        payload = {
+            "data": [
+                {
+                    "name": "Home",
+                    "topic": {
+                        "id": 42,
+                        "name": "Main topic",
+                        "mode": "1",
+                        "is_stop": False,
+                        "is_online": True,
+                        "eco": False,
+                        "last_sync": "2026-07-01T10:00:00Z",
+                    },
+                }
+            ]
+        }
+        self._respond(payload)
+
+        projects = self.client.get_project()
+
+        self.assertIsNone(projects[0]["Topic_modes"])
 
     def test_raises_when_the_api_returns_nothing(self):
         self._respond({})

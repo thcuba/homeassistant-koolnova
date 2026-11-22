@@ -1,0 +1,74 @@
+name: Tests
+
+# Unit tests, in two variants:
+#   tests     - fast, no Home Assistant installed, the HA-dependent modules skip
+#   tests-ha  - Home Assistant installed, so those modules actually run
+#
+# The second job is the reason this file exists: without it a change could break
+# every HA-dependent test and only the skipping copy would run.
+#
+# No `schedule:` trigger on purpose - GitHub disables a scheduled workflow that
+# sees no activity for 60 days, and that also stops its push/PR runs.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install the only runtime dependency of the vendored client
+        run: pip install requests
+      - name: Run the test suite
+        run: python -m unittest discover -s tests -t . -v
+
+  tests-ha:
+    name: Tests (Home Assistant)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install Home Assistant and the client dependency
+        # The version must match `homeassistant` in hacs.json: it is the oldest
+        # release this integration claims to support.
+        run: pip install requests homeassistant==2026.11.0
+      # Run module by module: `unittest discover` reports a skip as a success, so a
+      # single run cannot tell "these tests need Home Assistant and did not get it"
+      # apart from "these tests ran". Each module is checked on its own instead.
+      - name: Run the test suite against a real Home Assistant
+        run: |
+          set -e
+          for module in $(ls tests/test_*.py); do
+            name=$(basename "$module" .py)
+            echo "== $name"
+            output=$(python -m unittest "tests.$name" -v 2>&1) || true
+            echo "$output"
+            if echo "$output" | grep -q "skipped 'needs Home Assistant'"; then
+              echo "::error file=$module::module skipped because Home Assistant was not importable"
+              exit 1
+            fi
+            echo "$output" | grep -qE "^(OK|FAILED)" || {
+              echo "::error file=$module::module produced no unittest verdict"
+              exit 1
+            }
+            echo "$output" | grep -q "^OK" || exit 1
+          done
