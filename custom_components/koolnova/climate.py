@@ -41,6 +41,7 @@ from .const import (
     DEFAULT_MIN_TEMP,
     DEFAULT_MAX_TEMP,
     DEFAULT_TEMP_PRECISION,
+    AVAILABLE_TEMP_PRECISIONS,
     CONF_PROJECT_HVAC_MODES,
     CONF_ZONE_HVAC_MODES,
     CONF_MIN_TEMP,
@@ -101,12 +102,20 @@ class KoolnovaConfigMixin:
             return DEFAULT_MAX_TEMP
 
     def _get_temp_precision(self):
-        """Get configured temperature precision."""
+        """Get the configured temperature step, always one HA can actually render.
+
+        ``ClimateEntity.precision`` only styles the current temperature; the step the
+        thermostat applies comes from ``target_temperature_step``. An unsupported value
+        would show the wrong granularity in the UI, so it falls back to the default.
+        """
         val = self._get_config_value(CONF_TEMP_PRECISION, DEFAULT_TEMP_PRECISION)
         try:
-            return float(val)
+            precision = float(val)
         except (ValueError, TypeError):
             return DEFAULT_TEMP_PRECISION
+        if precision not in AVAILABLE_TEMP_PRECISIONS:
+            return DEFAULT_TEMP_PRECISION
+        return precision
 
     def _get_heat_source(self):
         """Get the configured heat source (air or underfloor) for the project circuit."""
@@ -194,8 +203,13 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         return self._get_max_temp()
 
     @property
-    def precision(self):
-        """Return configured temperature precision."""
+    def target_temperature_step(self):
+        """Return configured temperature step.
+
+        HA deprecated ``precision`` in favour of this attribute: the frontend ignores
+        ``precision`` and reads ``target_temperature_step`` from the capability
+        attributes, so this is what drives the +/- buttons in the thermostat card.
+        """
         return self._get_temp_precision()
 
     async def async_added_to_hass(self):
@@ -476,7 +490,7 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         if temp is None:
             return
 
-        precision = self.precision
+        precision = self.target_temperature_step
         temp = round(temp / precision) * precision
         
         if not (self.min_temp <= temp <= self.max_temp):
@@ -553,8 +567,8 @@ class KoolnovaZoneEntity(KoolnovaConfigMixin, ClimateEntity):
         return self._get_max_temp()
 
     @property
-    def precision(self):
-        """Return configured temperature precision."""
+    def target_temperature_step(self):
+        """Return configured temperature step (replaces the deprecated ``precision``)."""
         return self._get_temp_precision()
 
     async def async_added_to_hass(self):
@@ -648,7 +662,7 @@ class KoolnovaZoneEntity(KoolnovaConfigMixin, ClimateEntity):
         if temp is None:
             return
 
-        precision = self.precision
+        precision = self.target_temperature_step
         temp = round(temp / precision) * precision
         
         if not (self.min_temp <= temp <= self.max_temp):

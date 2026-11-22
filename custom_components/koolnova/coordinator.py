@@ -17,12 +17,36 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     CONF_PROJECT_UPDATE_FREQUENCY,
     DEFAULT_PROJECT_UPDATE_FREQUENCY,
+    CONF_REQUEST_TIMEOUT,
+    DEFAULT_REQUEST_TIMEOUT,
+    MIN_REQUEST_TIMEOUT,
+    MAX_REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch data from Koolnova API."""
+
+    @staticmethod
+    def _get_request_timeout(config_data: dict, options_data: dict) -> float:
+        """Resolve the per-request timeout option, clamped to the allowed range.
+
+        The option is user-visible in the options flow, so an out-of-range or
+        unparsable stored value must not be forwarded to the HTTP session as is.
+        """
+        raw = options_data.get(
+            CONF_REQUEST_TIMEOUT,
+            config_data.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
+        )
+        try:
+            timeout = float(raw)
+        except (TypeError, ValueError):
+            _LOGGER.warning(
+                "Invalid request timeout %r, using %ss", raw, DEFAULT_REQUEST_TIMEOUT
+            )
+            return DEFAULT_REQUEST_TIMEOUT
+        return min(max(timeout, MIN_REQUEST_TIMEOUT), MAX_REQUEST_TIMEOUT)
 
     def __init__(self, hass: HomeAssistant, config_entry):
         """Initialize coordinator."""
@@ -45,7 +69,8 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         self.client = KoolnovaAPIRestClient(
             username="",
             email=config_data["email"],
-            password=config_data["password"]
+            password=config_data["password"],
+            request_timeout=self._get_request_timeout(config_data, options_data),
         )
         self.config_entry = config_entry
         self.data = {"projects": [], "sensors": [], "hubs": []}
@@ -622,6 +647,17 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
         """Handle updated options - update coordinator settings without full restart."""
         config_data = self.config_entry.data
         options_data = self.config_entry.options
+
+        # Apply the request timeout to the live client/session: the option is
+        # meant to take effect immediately, without waiting for a re-auth.
+        new_timeout = self._get_request_timeout(config_data, options_data)
+        if new_timeout != self.client.request_timeout:
+            _LOGGER.info(
+                "Updating request timeout from %s to %ss",
+                self.client.request_timeout,
+                new_timeout,
+            )
+            self.client.set_request_timeout(new_timeout)
 
         # Update update interval
         new_update_interval = options_data.get(
