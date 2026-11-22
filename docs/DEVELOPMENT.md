@@ -97,6 +97,11 @@ against a real `homeassistant==2026.11.0` and **fails if any module reports `ski
 silently stops covering what it claims to cover is the failure mode being watched for, so a skip is
 treated as a broken build rather than a pass. `validate.yml` is left to the HACS and hassfest checks.
 
+Because `tests-ha` runs each module in its own process, a test module has to be importable on its
+own. It cannot lean on a stub that a previously-run module happened to register in `sys.modules`:
+install whatever stubs the module needs, and guard each one with a `not in sys.modules` check so a
+real Home Assistant import still wins when HA is available.
+
 It has no `schedule` trigger on purpose: GitHub disables scheduled workflows after 60 days of
 repository inactivity, and a silently disabled check is worse than one that only runs on push.
 
@@ -108,8 +113,9 @@ paths over a real socket. It still never touches api.koolnova.com, so no credent
 scripts with a plaintext password and had to be purged from git history in v1.2.6.
 
 `tests/test_sensor.py` covers the sensor platform (entity creation, late-reporting zones, availability)
-and the coordinator cache with a fake coordinator, but it needs Home Assistant itself, so it skips
-where HA isn't installed (including CI). Run it inside the HA container, as a separate process:
+and the coordinator cache with a fake coordinator. It needs Home Assistant itself: it skips under the
+`tests` job, and the `tests-ha` job is what actually runs it. To run it by hand inside the HA
+container, use a separate process:
 
 ```bash
 docker exec homeassistant rm -rf /tmp/kr && docker exec homeassistant mkdir /tmp/kr

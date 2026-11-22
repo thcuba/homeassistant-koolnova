@@ -59,6 +59,48 @@ def _install_home_assistant_stubs():
         ha.__path__ = []
         sys.modules["homeassistant"] = ha
 
+    if "homeassistant.config_entries" not in sys.modules:
+        config_entries = types.ModuleType("homeassistant.config_entries")
+        config_entries.ConfigEntry = MagicMock
+        sys.modules["homeassistant.config_entries"] = config_entries
+        setattr(ha, "config_entries", config_entries)
+
+    if "homeassistant.const" not in sys.modules:
+        ha_const = types.ModuleType("homeassistant.const")
+        ha_const.Platform = MagicMock
+        sys.modules["homeassistant.const"] = ha_const
+        setattr(ha, "const", ha_const)
+
+    if "homeassistant.core" not in sys.modules:
+        core = types.ModuleType("homeassistant.core")
+        core.HomeAssistant = MagicMock
+        sys.modules["homeassistant.core"] = core
+        setattr(ha, "core", core)
+
+    if "homeassistant.exceptions" not in sys.modules:
+        exceptions = types.ModuleType("homeassistant.exceptions")
+        exceptions.ConfigEntryAuthFailed = type("ConfigEntryAuthFailed", (Exception,), {})
+        sys.modules["homeassistant.exceptions"] = exceptions
+        setattr(ha, "exceptions", exceptions)
+
+    if "homeassistant.helpers.update_coordinator" not in sys.modules:
+        class _DataUpdateCoordinator:
+            def __init__(self, hass, logger, **kwargs):
+                self.hass = hass
+                self.logger = logger
+                self.update_interval = kwargs.get("update_interval")
+                self.config_entry = kwargs.get("config_entry")
+                self.data = {}
+
+        uc = types.ModuleType("homeassistant.helpers.update_coordinator")
+        uc.DataUpdateCoordinator = _DataUpdateCoordinator
+        uc.UpdateFailed = type("UpdateFailed", (Exception,), {})
+        helpers = types.ModuleType("homeassistant.helpers")
+        helpers.update_coordinator = uc
+        sys.modules["homeassistant.helpers"] = helpers
+        sys.modules["homeassistant.helpers.update_coordinator"] = uc
+        setattr(ha, "helpers", helpers)
+
     components = sys.modules.get("homeassistant.components")
     if components is None:
         components = types.ModuleType("homeassistant.components")

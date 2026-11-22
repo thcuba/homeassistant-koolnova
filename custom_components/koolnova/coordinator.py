@@ -40,6 +40,7 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name="koolnova",
             update_interval=timedelta(seconds=update_interval),
+            config_entry=config_entry,
         )
 
         self.client = KoolnovaAPIRestClient(

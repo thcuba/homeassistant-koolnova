@@ -44,6 +44,19 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   `schema.schema["key"]` returns the *validator*, not the marker — and `marker.default` is a
   zero-argument callable returning the value, not the value. The assertions read the default off
   the wrong object. A `_heat_source_default()` helper now walks the markers and calls `default()`.
+- **The coordinator now passes its `config_entry` to `DataUpdateCoordinator`.** It was relying on
+  the deprecated ContextVar fallback, which makes Home Assistant call `frame.report_usage()` — and
+  that raises `RuntimeError: Frame helper not set up` anywhere the frame helper is not initialised.
+  Constructing the coordinator outside a running HA instance therefore worked only by accident, and
+  stopped working as soon as the suite ran against a real Home Assistant. Now the entry is passed
+  explicitly, which is the supported API and needs no frame helper.
+- **`tests/test_switch.py` could not be imported on its own.** It stubbed `homeassistant.components`
+  and `homeassistant.components.climate` but not the `homeassistant.config_entries`, `.const`,
+  `.core`, `.exceptions` and `.helpers.update_coordinator` modules that importing
+  `custom_components.koolnova` pulls in, so it only passed when another test module had already
+  registered them in `sys.modules` — which is exactly what `unittest discover` did. Every stub is
+  now installed by the module itself and guarded with a `not in sys.modules` check, so a real Home
+  Assistant import still wins when HA is installed.
 
 ## [2.0.13] — 2026-11-20
 
