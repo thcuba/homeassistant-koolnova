@@ -275,6 +275,19 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(values, [HEAT_SOURCE_AIR, HEAT_SOURCE_FLOOR, HEAT_SOURCE_BOTH])
         self.assertFalse(source_sel.config.multiple)
 
+    def _heat_source_default(self, schema):
+        """The default vol.Schema would feed the heat source field.
+
+        vol.Schema compiles its dict, and compiling replaces each vol.Marker key with the
+        bare validator, so `schema.schema[CONF_HEAT_SOURCE]` is the SelectSelector and its
+        `default` is unreachable from there. The marker itself survives as the key, and
+        `marker.default` is a zero-argument callable returning the value.
+        """
+        marker = next(
+            key for key in schema.schema if getattr(key, "schema", None) == CONF_HEAT_SOURCE
+        )
+        return marker.default()
+
     def test_options_schema_keeps_the_configured_heat_source(self):
         entry = MagicMock()
         entry.data = {}
@@ -283,7 +296,7 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
         handler = OptionsFlowHandler(entry)
         schema = handler._get_options_schema()
 
-        self.assertEqual(schema.schema[CONF_HEAT_SOURCE].default, HEAT_SOURCE_FLOOR)
+        self.assertEqual(self._heat_source_default(schema), HEAT_SOURCE_FLOOR)
 
     def test_options_schema_defaults_to_air_when_unset(self):
         entry = MagicMock()
@@ -293,7 +306,7 @@ class TestKoolnovaConfigFlowSelectors(unittest.IsolatedAsyncioTestCase):
         handler = OptionsFlowHandler(entry)
         schema = handler._get_options_schema()
 
-        self.assertEqual(schema.schema[CONF_HEAT_SOURCE].default, HEAT_SOURCE_AIR)
+        self.assertEqual(self._heat_source_default(schema), HEAT_SOURCE_AIR)
 
     async def test_options_flow_temperature_validation(self):
         """Options flow must reject when min_temp >= max_temp."""

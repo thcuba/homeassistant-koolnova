@@ -88,7 +88,8 @@ page=1  page_size=25  ordering=-start_date  search=  is_oem=false
 ```
 
 From each item in `data[]` the client uses `name` and, inside `topic`: `id`, `name`, `mode`,
-`is_stop`, `is_online`, `eco`, `last_sync`.
+`is_stop`, `is_online`, `eco`, `last_sync`, and the `TopicModes` entry of `configurations`
+(see [Enabled modes](#enabled-modes-topicmodes)).
 
 ### `GET /topics/sensors/`
 
@@ -208,8 +209,8 @@ separate entries, so "heat" and "cool" on their own are ambiguous.
 Two consequences:
 
 - The mapping is **not invertible** — three codes collapse onto `heat` and two onto `cool` — so the
-  code to send also depends on the configured heat source. `KOOLNOVA_PROJECT_MODE_CODE` in `const.py`
-  is keyed by `(hvac mode, heat source)`, the source being `air`, `floor` or `both`.
+  code to send also depends on the configured heat source. `mode_code_for(hvac_mode, heat_source)`
+  in `const.py` resolves it, the source being `air`, `floor` or `both`.
 - **There is neither an "auto" nor an "off" code.** Code `6` looks like auto but it is the "heat
   floor + hot air" combination; the installation is stopped by setting the separate `is_stop` flag,
   because off is a flag and not a mode. A stopped project keeps reporting whatever `mode` was set
@@ -233,6 +234,52 @@ to another circuit.
 > switching the installation off switched the heating *on*. `heat` sent `4`, which also implied the
 > underfloor circuit, so an installation with ducted air only never blew hot air (issue #96). Code
 > `6` turned out not to exist in the app at all.
+
+### Enabled modes (`TopicModes`)
+
+`topic.configurations` is a list of `{key, value}` pairs. The one that matters is `TopicModes`: a
+positional string of `"0"`/`"1"` where the character at index *N* is the flag for project mode code
+*N*, i.e. the modes the installation is actually wired to run.
+
+```
+TopicModes = "0110011"
+```
+
+| Index | Flag | Code at that position |
+|---|---|---|
+| 0 | `0` | `fan_only` (topic-only code) |
+| 1 | `1` | cool air — **enabled** |
+| 2 | `1` | hot air — **enabled** |
+| 3 | `0` | heat floor |
+| 4 | `0` | *(unmapped)* |
+| 5 | `1` | cool floor + cool air — **enabled** |
+| 6 | `1` | heat floor + hot air — **enabled** |
+
+Index `0` is a real position, holding a code that only exists here — `fan_only` — because the cloud
+has a fan-only project mode that the project `mode` table above does not use. Positions beyond the
+last known code are ignored rather than treated as a contradiction: the app has been observed
+sending one character more than there are codes.
+
+The client exposes the raw string as `Topic_modes` on the project dict (and as the
+`project_mode_code` entity attribute), resolved by `topic_modes(topic)`. The coordinator reads it
+from `topic.configurations` on `/projects/`, and from `sensor.topic_info.configurations` in the
+`/devices/` fallback — so the narrowing keeps working when the primary endpoints fail.
+
+Consumers, all in `const.py`:
+
+| Helper | Behaviour |
+|---|---|
+| `enabled_mode_codes(topic_modes)` | Codes the installation reports as enabled, or `[]` when the value is missing/malformed/unrecognised — it never guesses |
+| `enabled_project_hvac_modes(topic_modes)` | The HA modes (`cool`/`heat`) those codes map onto, or `None` when nothing is known |
+| `filter_project_hvac_modes(values, topic_modes)` | Narrows a mode list; **never returns an empty list** — if narrowing would empty it the pre-narrow selection is kept |
+| `mode_code_for(hvac_mode, heat_source, topic_modes)` | The code to send. Keeps the configured code when it is enabled, falls back to another enabled code for the same direction, and returns `None` when the installation cannot run that direction |
+
+When `TopicModes` is absent — older accounts, or a payload shape not seen yet — nothing is known,
+so nothing is narrowed and the historical code is sent: all project modes stay offered and the
+write behaves exactly as it did before. **The narrowing is an improvement, never a prerequisite.**
+
+The `system_modes` entity attribute is the HA-mode view of the same string, so the narrowing is
+visible from Home Assistant without reading the API.
 
 ### Zone status (`status`)
 

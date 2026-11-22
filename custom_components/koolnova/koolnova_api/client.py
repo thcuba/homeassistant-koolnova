@@ -16,6 +16,25 @@ from .const import AUTH_FAILURE_COOLDOWN, COMMON_HEADERS, PATCH_HEADERS
 _LOGGER = logging.getLogger(__name__)
 
 
+def topic_modes(topic):
+    """The topic's "TopicModes" configuration, or None when it is not exposed.
+
+    The value is a "0"/"1" string whose position N is the flag for project mode N; see
+    const.enabled_mode_codes(). Only the `projects/` payload and the `/devices/` fallback
+    carry `configurations`, so this returns None for `topics/sensors/` data.
+    """
+    configurations = (topic or {}).get("configurations") or []
+    return next(
+        (
+            configuration.get("value")
+            for configuration in configurations
+            if isinstance(configuration, dict)
+            and configuration.get("key") == "TopicModes"
+        ),
+        None,
+    )
+
+
 class KoolnovaAPIRestClient:
     """Proxy to the Koolnova REST API."""
 
@@ -131,6 +150,7 @@ class KoolnovaAPIRestClient:
                 "Topic_Name": project["topic"]["name"],
                 "Topic_id": project["topic"]["id"],
                 "Mode": project["topic"]["mode"],
+                "Topic_modes": topic_modes(project["topic"]),
                 "is_stop": project["topic"]["is_stop"],
                 "is_online": project["topic"]["is_online"],
                 "eco": project["topic"]["eco"],

@@ -25,7 +25,6 @@ from .const import (
     DOMAIN,
     KOOLNOVA_TO_HVAC_MODE,
     KOOLNOVA_MODE_TO_HEAT_SOURCE,
-    KOOLNOVA_PROJECT_MODE_CODE,
     KOOLNOVA_PROJECT_STOP_KEY,
     KOOLNOVA_PRESET_CODES,
     KOOLNOVA_MODE_TO_PRESET,
@@ -47,6 +46,8 @@ from .const import (
     CONF_MAX_TEMP,
     CONF_TEMP_PRECISION,
     filter_project_hvac_modes,
+    enabled_project_hvac_modes,
+    mode_code_for,
 )
 from .coordinator import KoolnovaDataUpdateCoordinator
 
@@ -145,15 +146,31 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             manufacturer="Koolnova",
             model="REST API Gateway",
         )
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
 
         self._global_fan_mode = FAN_AUTO
 
+    def _get_project_mode_values(self):
+        """Ids of the project modes selected in the options."""
+        return self._get_config_value(
+            CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES]
+        )
+
     def _get_project_hvac_modes(self):
-        """Get configured project HVAC modes, dropping any the project cannot execute."""
-        mode_values = self._get_config_value(CONF_PROJECT_HVAC_MODES, [mode.value for mode in DEFAULT_PROJECT_HVAC_MODES])
-        return filter_project_hvac_modes(mode_values)
+        """Get configured project HVAC modes.
+
+        Narrowed down to what the installation enables, dropping any mode it cannot run.
+        """
+        self._update_project_data()
+        return filter_project_hvac_modes(
+            self._get_project_mode_values(), self._project.get("Topic_modes")
+        )
+
+    def _get_system_hvac_modes(self):
+        """Modes the installation enables, or None when the API does not say."""
+        self._update_project_data()
+        return enabled_project_hvac_modes(self._project.get("Topic_modes"))
 
     @property
     def hvac_modes(self):
@@ -239,7 +256,7 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         return current_mode
 
     @property
-    def target_temperature(self):
+    def native_target_temperature(self):
         """Return median of zones target temperatures for this project."""
         sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
@@ -257,7 +274,7 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
         return None
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         """Return average temperature of all zones in this project, rounded to nearest 0.5."""
         sensors = self.coordinator.get_project_sensors(self._project.get("Topic_id"))
 
@@ -316,6 +333,12 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             # Raw cloud value and the circuit it drives: this is what makes the code
             # table verifiable without reading the API by hand.
             "project_mode_raw": self._project.get("Mode"),
+            # What the installation says it enables, versus what the options ask for:
+            # the two differ when a configured mode is not enabled by this topic.
+            "project_mode_code": self._project.get("Topic_modes"),
+            "system_modes": [
+                mode.value for mode in self._get_system_hvac_modes() or []
+            ],
             "heat_source": KOOLNOVA_MODE_TO_HEAT_SOURCE.get(self._project.get("Mode")),
             "configured_heat_source": self._get_heat_source(),
             "total_zones": sensors_count,
@@ -363,8 +386,19 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             return
 
         heat_source = self._get_heat_source()
-        koolnova_mode = KOOLNOVA_PROJECT_MODE_CODE.get((hvac_mode, heat_source))
+        koolnova_mode = mode_code_for(
+            hvac_mode, heat_source, self._project.get("Topic_modes")
+        )
         if not koolnova_mode:
+            system_modes = self._get_system_hvac_modes()
+            if system_modes and hvac_mode not in system_modes:
+                _LOGGER.error(
+                    "The installation does not enable %s: its TopicModes value only "
+                    "allows %s",
+                    hvac_mode,
+                    [mode.value for mode in system_modes],
+                )
+                return
             _LOGGER.error(
                 "No Koolnova code for HVAC mode %s with heat source %s. Known codes: "
                 "1 cool air, 2 hot air, 3 heat floor, 5 cool floor + cool air, "
@@ -520,7 +554,7 @@ class KoolnovaZoneEntity(KoolnovaConfigMixin, ClimateEntity):
             ClimateEntityFeature.TURN_ON |
             ClimateEntityFeature.TURN_OFF
         )
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
 
         project_id = sensor.get("Topic_id", "global")
@@ -585,13 +619,13 @@ class KoolnovaZoneEntity(KoolnovaConfigMixin, ClimateEntity):
         return current_mode
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         """Return current temperature."""
         self._update_sensor_data()
         return self._sensor.get("Room_actual_temp")
 
     @property
-    def target_temperature(self):
+    def native_target_temperature(self):
         """Return target temperature."""
         self._update_sensor_data()
         return self._sensor.get("Room_setpoint_temp")
@@ -739,7 +773,7 @@ class KoolnovaHubEntity(ClimateEntity):
             ClimateEntityFeature.TURN_ON |
             ClimateEntityFeature.TURN_OFF
         )
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
 
         # Hubs are legacy, but let's try to group them too if they belong to a project
         self._attr_device_info = DeviceInfo(

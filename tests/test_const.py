@@ -326,5 +326,84 @@ class ProjectModeSelectionTest(unittest.TestCase):
         )
 
 
+class TopicModesTest(unittest.TestCase):
+    """`TopicModes` is the topic configuration listing which mode codes are enabled.
+
+    The string is positional: the character at index N is the flag for code N, so
+    "0110011" enables 1, 2, 5 and 6 - the four codes this integration maps. Its length is
+    whatever the installation reports, so positions past the known codes are ignored
+    rather than treated as a contradiction.
+    """
+
+    def test_the_enabled_codes_come_from_the_positions_set_to_one(self):
+        self.assertEqual(const.enabled_mode_codes("0110011"), ["1", "2", "5", "6"])
+
+    def test_positions_holding_a_code_this_table_lacks_are_skipped(self):
+        """Indexes 4 and 7 are set here and mean nothing yet, so they never become codes."""
+        self.assertEqual(const.enabled_mode_codes("01101011"), ["1", "2", "6"])
+
+    def test_a_missing_value_enables_nothing(self):
+        """Nothing is known, so nothing is guessed here - see the helpers below."""
+        for value in (None, "", 0, ["1"]):
+            with self.subTest(value=value):
+                self.assertEqual(const.enabled_mode_codes(value), [])
+
+    def test_the_enabled_hvac_modes_follow_the_codes(self):
+        self.assertEqual(
+            [mode.value for mode in const.enabled_project_hvac_modes("0110011")],
+            ["cool", "heat"],
+        )
+
+    def test_a_cool_only_installation_does_not_enable_heating(self):
+        """Codes 1 and 5 only: no heating code is set."""
+        self.assertEqual(
+            [mode.value for mode in const.enabled_project_hvac_modes("0100010")],
+            ["cool"],
+        )
+
+    def test_fan_only_is_never_offered_as_a_project_mode(self):
+        """Position 0 is enabled by some installations, but fan_only is not a direction."""
+        values = [mode.value for mode in const.enabled_project_hvac_modes("1100010")]
+        self.assertNotIn("fan_only", values)
+
+    def test_a_value_mapping_nothing_is_treated_as_unknown(self):
+        self.assertIsNone(const.enabled_project_hvac_modes("1000000"))
+
+    def test_an_unknown_installation_does_not_narrow_the_selection(self):
+        """Senza TopicModes non si indovina: la selezione salvata resta quella scelta."""
+        kept = const.filter_project_hvac_modes(["cool", "heat", "off"], None)
+        self.assertEqual([mode.value for mode in kept], ["cool", "heat", "off"])
+
+    def test_the_selection_is_narrowed_to_what_the_installation_enables(self):
+        kept = const.filter_project_hvac_modes(["cool", "heat", "off"], "0100010")
+        self.assertEqual([mode.value for mode in kept], ["cool", "off"])
+
+    def test_off_survives_the_narrowing(self):
+        """`off` is the is_stop flag, not a code, so no TopicModes value can remove it."""
+        kept = const.filter_project_hvac_modes(["off"], "0100010")
+        self.assertEqual([mode.value for mode in kept], ["off"])
+
+    def test_a_contradicting_value_never_leaves_the_entity_without_a_mode(self):
+        kept = const.filter_project_hvac_modes(["heat"], "0100010")
+        self.assertEqual([mode.value for mode in kept], ["heat"])
+
+    def test_the_configured_code_wins_when_the_installation_enables_it(self):
+        self.assertEqual(const.mode_code_for("heat", "floor", "0111011"), "3")
+
+    def test_a_disabled_code_falls_back_to_an_enabled_one_in_the_same_direction(self):
+        """Code 3 is off here, so heating uses another circuit that is enabled."""
+        self.assertEqual(const.mode_code_for("heat", "floor", "0110011"), "2")
+
+    def test_a_direction_the_installation_cannot_run_has_no_code(self):
+        self.assertIsNone(const.mode_code_for("heat", "air", "0100010"))
+
+    def test_nothing_is_known_without_a_topic_modes_value(self):
+        """Senza dato si tiene il codice storico: nessuna regressione per chi non ce l'ha."""
+        self.assertEqual(const.mode_code_for("heat", "floor"), const.KOOLNOVA_MODE_HEAT_FLOOR)
+
+    def test_cooling_on_the_underfloor_only_still_has_no_code(self):
+        self.assertIsNone(const.mode_code_for("cool", "floor", "0111011"))
+
+
 if __name__ == "__main__":
     unittest.main()

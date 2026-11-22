@@ -1,16 +1,18 @@
 name: Validate
 
-# The single validation workflow of this repo: HACS compliance (hacs/action),
-# hassfest and the unit tests. Overlapping workflows used to run the same
-# validation more than once per PR (a second HACS-only workflow fired on every
-# branch and daily); they were removed and their coverage lives here.
+# HACS compliance (hacs/action) and hassfest - the checks a HACS repository is
+# expected to pass. The unit tests live in `tests.yml`, so a failure there is
+# reported separately from a packaging problem.
+#
+# No `schedule:` trigger on purpose: GitHub disables a scheduled workflow that
+# sees no activity for 60 days, and disabling it also stops the push/PR runs of
+# the same workflow. A validation gate that turns itself off is worse than no
+# gate, so these checks run only where they matter - on pushes and pull requests.
 
 on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -42,17 +44,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
-
-  tests:
-    name: Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install the only runtime dependency of the vendored client
-        run: pip install requests
-      - name: Run the test suite
-        run: python -m unittest discover -s tests -t . -v

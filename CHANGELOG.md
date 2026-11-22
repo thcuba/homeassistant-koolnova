@@ -7,6 +7,28 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ## [Unreleased]
 
+### Added
+
+- **The integration now reads which project modes the installation actually runs.** The cloud
+  exposes a `TopicModes` entry in `topic.configurations`: a positional string of `0`/`1` where the
+  character at index *N* is the flag for project mode code *N*. Only the enabled modes are offered
+  on the climate entity, and a code is only sent if the installation reports it as enabled —
+  picking "heat" on an installation wired for ducted air alone no longer PATCHes a mode it cannot
+  run. Ported from upstream (`luisgsluis`) 4.0.0, but **additively**: presets and the `heat_source`
+  option remain the way to choose a circuit, where upstream replaced them with a `(mode,
+  TopicModes)` lookup. The two new attributes — `project_mode_code` (the raw string) and
+  `system_modes` (its HA-mode view) — make the narrowing visible without reading the API.
+  When `TopicModes` is missing nothing is known, so nothing is narrowed and the entity behaves
+  exactly as before. `filter_project_hvac_modes()` also never returns an empty list, so a
+  contradictory string cannot leave the entity with no mode to offer.
+  See [docs/API.md](docs/API.md#enabled-modes-topicmodes).
+- **The minimum Home Assistant version is now `2026.11.0`** (`hacs.json`), up from `2025.12.0`.
+  The entity now uses the `native_*` temperature API, which is what that floor is for.
+- **Continuous integration is split in two.** `tests.yml` runs the suite on its own, once on
+  Python 3.13 without Home Assistant (the stubs cover the HA imports) and once on 3.14 against a
+  real `homeassistant==2026.11.0`, failing per test module if anything is skipped as
+  "needs Home Assistant" or reports a non-`OK` verdict. `validate.yml` keeps HACS/hassfest.
+
 ### Fixed
 
 - **The project entity no longer offers `auto`.** There is no `auto` code in the project payload,
@@ -17,6 +39,11 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   are filtered out, falling back to the default rather than leaving the entity with no mode to
   offer. **Zones keep `auto`** — their `status 03` really exists — and so does the fan: `auto` as a
   fan speed is a different field and works, as @DaniCai130 pointed out.
+- **Two `test_config_flow` tests errored on every run**, and had for several releases.
+  `vol.Schema.__init__` preserves `vol.Marker` objects as keys, so
+  `schema.schema["key"]` returns the *validator*, not the marker — and `marker.default` is a
+  zero-argument callable returning the value, not the value. The assertions read the default off
+  the wrong object. A `_heat_source_default()` helper now walks the markers and calls `default()`.
 
 ## [2.0.13] — 2026-11-20
 

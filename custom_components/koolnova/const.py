@@ -124,13 +124,73 @@ PROJECT_HVAC_MODES = [
 ]
 
 
-def filter_project_hvac_modes(values):
+# The topic's "TopicModes" configuration says which of the codes above a given
+# installation actually enables: a string of "0"/"1" where the character at index N is
+# the flag for code N ("01100011" enables codes 1, 2, 5, 6). It comes from the topic's
+# `configurations` block - see client.topic_modes() - which the `projects/` payload and
+# the `/devices/` fallback expose, while `topics/sensors/` does not.
+#
+# Codes the API can enable that have no project mode here: fan_only is not a
+# direction the installation can run. Knowing them keeps them from being mistaken for
+# an unmapped code, and they are never offered as a project mode.
+KOOLNOVA_TOPIC_ONLY_MODE_CODES = {"0": HVACMode.FAN_ONLY}
+
+
+def _known_mode_codes():
+    """Codes whose meaning is known well enough to reason about enabled modes."""
+    return set(KOOLNOVA_TO_HVAC_MODE) | set(KOOLNOVA_TOPIC_ONLY_MODE_CODES)
+
+
+def enabled_mode_codes(topic_modes):
+    """Codes a TopicModes string enables, as strings: "0110001" -> ["1", "2", "6"].
+
+    Only positions holding a known code are kept. The string is positional and its
+    length is whatever the installation reports - shorter than the highest code, or
+    longer with positions set for codes this table does not know - so anything past the
+    codes it can interpret is simply ignored. A missing or malformed value enables
+    nothing, because nothing is known: callers decide what that means rather than
+    getting a guess from here.
+    """
+    if not isinstance(topic_modes, str) or not topic_modes:
+        return []
+    known = _known_mode_codes()
+    return [
+        str(index)
+        for index, flag in enumerate(topic_modes)
+        if flag == "1" and str(index) in known
+    ]
+
+
+def enabled_project_hvac_modes(topic_modes):
+    """Modes the installation enables, or None when that cannot be decided.
+
+    None - no TopicModes value, or one enabling no code this table maps - means "do not
+    narrow anything down": guessing would hide a mode the installation can run, which is
+    worse than offering one it cannot.
+    """
+    if not isinstance(topic_modes, str) or not topic_modes:
+        return None
+    codes = enabled_mode_codes(topic_modes)
+    modes = [
+        mode
+        for mode in PROJECT_HVAC_MODES
+        if mode is not HVACMode.OFF
+        and any(KOOLNOVA_TO_HVAC_MODE.get(code) == mode for code in codes)
+    ]
+    return modes or None
+
+
+def filter_project_hvac_modes(values, topic_modes=None):
     """Keep only the modes the project can execute, in a stable order.
 
     Saved options can carry values the project cannot run - `auto` from an older
     configuration, or something typed by hand. Exposing them in `hvac_modes` would show a
     command that does nothing, so they are dropped. When nothing valid is left the default is
     returned instead of leaving the entity without a single mode to offer.
+
+    With a `TopicModes` value the selection is also narrowed down to what the installation
+    enables, but never emptied: an entity without a single mode is worse than one offering
+    a mode the user did not select.
     """
     kept = []
     for value in values or []:
@@ -140,8 +200,17 @@ def filter_project_hvac_modes(values):
             continue  # valore sconosciuto: scartato, non deve rompere l'entita'
         if mode in PROJECT_HVAC_MODES and mode not in kept:
             kept.append(mode)
+    if not kept:
+        kept = list(DEFAULT_PROJECT_HVAC_MODES)
+
+    enabled = enabled_project_hvac_modes(topic_modes)
+    if enabled:
+        narrowed = [mode for mode in kept if mode is HVACMode.OFF or mode in enabled]
+        if narrowed:
+            kept = narrowed
+
     order = {mode: index for index, mode in enumerate(PROJECT_HVAC_MODES)}
-    return sorted(kept, key=order.__getitem__) if kept else list(DEFAULT_PROJECT_HVAC_MODES)
+    return sorted(kept, key=order.__getitem__)
 
 
 # Presets exposed on the project entity: the five entries the app offers. Each is a
@@ -157,6 +226,36 @@ KOOLNOVA_PRESET_CODES = {
 
 # Which preset a raw mode corresponds to. Off, auto and unmapped codes have none.
 KOOLNOVA_MODE_TO_PRESET = {code: name for name, code in KOOLNOVA_PRESET_CODES.items()}
+
+
+def mode_code_for(hvac_mode, heat_source=DEFAULT_HEAT_SOURCE, topic_modes=None):
+    """Code to send for (Home Assistant mode, circuit), or None when there is none.
+
+    (cool, floor) has no code at all and returns None. When a TopicModes value is known
+    and it does not enable the requested code, the same direction on another circuit is
+    used - an enabled code is better than one the installation ignores - and None is
+    returned only when the installation cannot run that direction at all.
+    """
+    code = KOOLNOVA_PROJECT_MODE_CODE.get((hvac_mode, heat_source))
+    if code is None:
+        return None
+
+    enabled = enabled_project_hvac_modes(topic_modes)
+    if enabled is None:
+        return code  # nothing known about the installation: keep the historical code
+    if hvac_mode not in enabled:
+        return None
+
+    enabled_codes = enabled_mode_codes(topic_modes)
+    if code in enabled_codes:
+        return code
+    # Same direction, another circuit: an enabled code is better than one the
+    # installation ignores. Iteration order follows the code table, so the choice is
+    # stable across runs.
+    for candidate, candidate_mode in KOOLNOVA_TO_HVAC_MODE.items():
+        if candidate_mode == hvac_mode and candidate in enabled_codes:
+            return candidate
+    return None
 
 # Status mappings for sensors/zones - only the forward definition is written by hand
 KOOLNOVA_ZONE_STATUS_TO_HVAC = {
