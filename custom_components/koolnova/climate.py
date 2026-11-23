@@ -423,11 +423,14 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             )
             return
 
-        body = {"mode": koolnova_mode}
-        if self._project.get(KOOLNOVA_PROJECT_STOP_KEY):
-            # Coming back from a stop: clear the flag in the same request, otherwise
-            # the installation would stay stopped with the new mode merely set.
-            body[KOOLNOVA_PROJECT_STOP_KEY] = False
+        # Clear the stop flag in the same request, unconditionally. The cached
+        # ``is_stop`` can be up to an hour old (projects are re-read only every
+        # ``project_update_frequency`` coordinator cycles), so trusting it left the
+        # installation stopped with the new mode merely set: the command went out as
+        # ``{"mode": N}`` alone and nothing cleared the stop. Sending ``False`` to an
+        # installation that is not stopped is a no-op, and this stays one request, so
+        # the API rate limit is unaffected.
+        body = {"mode": koolnova_mode, KOOLNOVA_PROJECT_STOP_KEY: False}
 
         await self._async_send_project_payload(
             body, f"{hvac_mode} (heat source {heat_source}, code {koolnova_mode})"

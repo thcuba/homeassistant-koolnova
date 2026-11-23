@@ -31,6 +31,15 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ### Fixed
 
+- **Leaving `off` no longer depends on a cache that can be an hour old.** The stop flag was
+  cleared only when the cached `is_stop` said the installation was stopped, and projects are
+  re-read only once per `project_update_frequency` coordinator cycles — 60 × 60 s with the current
+  options, and the same hour with the defaults (20 × 180 s). A stale cache therefore sent
+  `{"mode": N}` alone and nothing cleared the stop: the installation stayed stopped with the new
+  mode merely set, which is the symptom reported by @DaniCai130 after `off` → `heat`.
+  `is_stop: false` is now sent unconditionally with a running mode. It stays **one** request, so
+  nothing changes for the API rate limit, and the behaviour was verified on a real installation,
+  where the system left the stopped state and became *ready*.
 - **The project entity no longer offers `auto`.** There is no `auto` code in the project payload,
   so selecting it sent nothing at all and the only trace was a line in the log — reported by
   @DaniCai130, who tested 2.0.13 against the app ("auto → no effect: the project stays in the
