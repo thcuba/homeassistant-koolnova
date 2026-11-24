@@ -21,9 +21,59 @@ from .const import (
     DEFAULT_REQUEST_TIMEOUT,
     MIN_REQUEST_TIMEOUT,
     MAX_REQUEST_TIMEOUT,
+    KOOLNOVA_PROJECT_STOP_KEY,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def payload_changes_project(payload, current_project) -> bool:
+    """Whether ``payload`` asks the project to move away from its cached state.
+
+    Used to tell "the cloud dropped this command" apart from "there was nothing to
+    apply": a PATCH that matches the current state is not expected to move
+    ``last_sync``.
+    """
+    if not isinstance(payload, dict):
+        return False
+    current = current_project if isinstance(current_project, dict) else {}
+
+    if "mode" in payload and str(payload["mode"]) != str(current.get("Mode")):
+        return True
+
+    if KOOLNOVA_PROJECT_STOP_KEY in payload:
+        if bool(payload[KOOLNOVA_PROJECT_STOP_KEY]) != bool(
+            current.get(KOOLNOVA_PROJECT_STOP_KEY)
+        ):
+            return True
+
+    return False
+
+
+def command_was_applied(previous_sync, response, payload, current_project) -> bool:
+    """Did the cloud actually apply this command?
+
+    ``last_sync`` is the only honest signal. The topics endpoint answers 200 and
+    echoes back the values it was sent, so a command the server drops looks applied
+    unless the project's ``last_sync`` moved — observed on a real installation, where
+    an accepted ``{"mode": 2, "is_stop": false}`` left the installation stopped and
+    ``last_sync`` untouched.
+
+    Returns True when the payload asked for no change (nothing to apply) and when the
+    response carries no ``last_sync`` (nothing to compare, keep the old behaviour).
+    """
+    if not isinstance(response, dict):
+        return True
+
+    new_sync = response.get("last_sync")
+    if not new_sync:
+        return True
+
+    if not payload_changes_project(payload, current_project):
+        return True
+
+    return str(new_sync) != str(previous_sync)
+
 
 class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch data from Koolnova API."""
@@ -495,16 +545,40 @@ class KoolnovaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Error updating sensor %s: %s", sensor_id, err)
             raise
 
+    def _cached_project(self, topic_id) -> dict | None:
+        """The project as it is currently cached, if any."""
+        for project in self.data.get("projects", []):
+            if project.get("Topic_id") == topic_id:
+                return project
+        return None
+
     async def async_update_project_data(self, topic_id: int, payload: dict) -> dict:
         """Update project using API and update local cache - NO additional API calls."""
         try:
             _LOGGER.debug("Updating project %s with payload: %s", topic_id, payload)
+            current_project = self._cached_project(topic_id)
+            previous_sync = (current_project or {}).get("last_sync")
             result = await self.hass.async_add_executor_job(
                 self.client.update_project, topic_id, payload
             )
             _LOGGER.debug("API response for project %s: %s", topic_id, result)
-            self._update_project_in_cache(topic_id, result)
-            self.async_update_listeners()
+            if command_was_applied(previous_sync, result, payload, current_project):
+                self._update_project_in_cache(topic_id, result)
+                self.async_update_listeners()
+            else:
+                # The server answered 200 without touching the topic: copying that
+                # answer into the cache would have Home Assistant report a mode the
+                # installation is not running, and with projects re-read once per
+                # `project_update_frequency` cycles it would stay wrong for up to an
+                # hour. Keep the real state and say so, loudly.
+                _LOGGER.error(
+                    "Project %s: the cloud accepted the command but did not apply it "
+                    "(last_sync still %s), so the installation state is unchanged. "
+                    "Not caching the new values. Payload: %s",
+                    topic_id,
+                    previous_sync,
+                    payload,
+                )
             return result
         except Exception as err:
             _LOGGER.error("Error updating project %s: %s", topic_id, err)

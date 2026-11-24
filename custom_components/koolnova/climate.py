@@ -423,24 +423,68 @@ class KoolnovaProjectEntity(KoolnovaConfigMixin, ClimateEntity):
             )
             return
 
-        # Clear the stop flag in the same request, unconditionally. The cached
-        # ``is_stop`` can be up to an hour old (projects are re-read only every
-        # ``project_update_frequency`` coordinator cycles), so trusting it left the
-        # installation stopped with the new mode merely set: the command went out as
-        # ``{"mode": N}`` alone and nothing cleared the stop. Sending ``False`` to an
-        # installation that is not stopped is a no-op, and this stays one request, so
-        # the API rate limit is unaffected.
-        body = {"mode": koolnova_mode, KOOLNOVA_PROJECT_STOP_KEY: False}
+        # The cloud keeps the last mode while the installation is stopped, so leaving
+        # `off` normally asks for the mode it already has. A PATCH whose mode does not
+        # change is treated as a no-op by the server and the stop flag is dropped with
+        # it — measured on a real installation, where the accepted
+        # `{"mode": "2", "is_stop": false}` left the system stopped. In that case the
+        # flag travels alone, which is what the app's Start button appears to do; when
+        # the mode really changes, both go together. Either way it is **one** request,
+        # so the API rate limit is untouched.
+        requested_mode = str(koolnova_mode)
+        if requested_mode == str(self._project.get("Mode") or ""):
+            body = {KOOLNOVA_PROJECT_STOP_KEY: False}
+        else:
+            body = {"mode": koolnova_mode, KOOLNOVA_PROJECT_STOP_KEY: False}
 
         await self._async_send_project_payload(
             body, f"{hvac_mode} (heat source {heat_source}, code {koolnova_mode})"
         )
 
+    def _project_matches_payload(self, body) -> bool:
+        """Whether the cached project now shows what ``body`` asked for."""
+        if "mode" in body and str(body["mode"]) != str(self._project.get("Mode")):
+            return False
+        if KOOLNOVA_PROJECT_STOP_KEY in body:
+            if bool(self._project.get(KOOLNOVA_PROJECT_STOP_KEY)) != bool(
+                body[KOOLNOVA_PROJECT_STOP_KEY]
+            ):
+                return False
+        return True
+
     async def _async_send_project_payload(self, body, description):
-        """Send a project payload to the cloud and surface any failure."""
+        """Send a project payload to the cloud and surface any failure.
+
+        A 200 answer is not proof: the topics endpoint echoes back the values it was
+        sent even when it drops the command, so the cached project is checked against
+        what was asked. The coordinator only refreshes the cache when the project's
+        ``last_sync`` moved, so a stale cache here means the installation did not
+        change — and saying nothing would leave Home Assistant reporting a mode the
+        system is not running, for up to an hour.
+        """
         try:
             await self.coordinator.async_update_project_data(self._project["Topic_id"], body)
-            _LOGGER.info("Project mode updated to %s: %s", description, body)
+            self._update_project_data()
+            if self._project_matches_payload(body):
+                _LOGGER.info("Project mode updated to %s: %s", description, body)
+                return
+            _LOGGER.error(
+                "The cloud accepted %s but did not apply it: the installation is "
+                "still in its previous state (%s, %s=%s)",
+                body,
+                self._project.get("Mode"),
+                KOOLNOVA_PROJECT_STOP_KEY,
+                self._project.get(KOOLNOVA_PROJECT_STOP_KEY),
+            )
+            async_create(
+                self.hass,
+                (
+                    "Koolnova accepted the command but did not apply it: the "
+                    "installation is still in its previous state. Nothing was changed, "
+                    "so the entity keeps showing the real state."
+                ),
+                title="Koolnova Project Mode",
+            )
         except Exception as err:
             _LOGGER.error("Error updating project mode: %s", err)
             async_create(
