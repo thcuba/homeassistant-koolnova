@@ -29,6 +29,12 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
   real `homeassistant==2026.11.0`, failing per test module if anything is skipped as
   "needs Home Assistant" or reports a non-`OK` verdict. `validate.yml` keeps HACS/hassfest.
 
+### Changed
+
+- **Il freno delle richieste passa da 10 s a 12 s.** Koolnova banna l'IP sopra una
+  richiesta ogni 30 s di media e non perdona singole infrazioni: il freno sale, non
+  scende, e c'e' un test che impedisce di abbassarlo in silenzio.
+
 ### Fixed
 
 - **The integration no longer gets a PATCH the cloud silently drops, and a command that was not

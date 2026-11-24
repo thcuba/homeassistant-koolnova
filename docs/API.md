@@ -17,10 +17,10 @@ Base: `https://api.koolnova.com` (Django REST framework).
 2. **Trailing slash on every path.** `projects/` yes, `projects` no.
 3. **At most one request every 30 s.** Koolnova bans your IP automatically above that rate, and
    also on repeated failed logins. The client enforces a minimum distance of
-   `MIN_REQUEST_INTERVAL` (10 s) between any two HTTP calls, login included, and the brake is
+   `MIN_REQUEST_INTERVAL` (12 s) between any two HTTP calls, login included, and the brake is
    shared by the whole process (`KoolnovaClientSession._wait_for_request_slot`), so parallel
    callers leave one at a time. This removes the bursts — a full refresh issues 3 + N requests,
-   `koolnova.set_all_zones_mode` fires one PATCH per zone at the same instant — but 10 s is
+   `koolnova.set_all_zones_mode` fires one PATCH per zone at the same instant — but 12 s is
    **not** by itself the 30 s ban threshold: what keeps the account safe is the low average
    (180 s polling, a full cycle every 20). Raise `MIN_REQUEST_INTERVAL` to 30 if a ban is ever
    observed on a real account.
