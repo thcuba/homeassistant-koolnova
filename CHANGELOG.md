@@ -31,6 +31,17 @@ identical (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#publishing-a-release)).
 
 ### Fixed
 
+- **The integration no longer gets a PATCH the cloud silently drops, and a command that was not
+  applied is no longer believed.** Measured on a real installation: after a stop, the project still
+  carries its last `mode`, so leaving `off` asks for a mode identical to the stored one — and the
+  cloud answers `200` with the values echoed back while leaving `last_sync` untouched and the
+  system stopped. Two consequences, both fixed here. The stop flag now travels **alone** when the
+  mode does not change (exactly what the app's Start appears to do) and together with the mode when
+  it does, so it is still **one** request per command and the API rate limit is untouched. And the
+  response is no longer taken as proof: `last_sync` deciding whether the command was applied, so a
+  dropped command neither replaces the cached state nor goes unnoticed — it is logged and surfaced
+  as a notification, instead of having Home Assistant report a mode the installation is not
+  running for up to an hour.
 - **Leaving `off` no longer depends on a cache that can be an hour old.** The stop flag was
   cleared only when the cached `is_stop` said the installation was stopped, and projects are
   re-read only once per `project_update_frequency` coordinator cycles — 60 × 60 s with the current

@@ -142,20 +142,28 @@ _install_home_assistant_stubs()
 
 from custom_components.koolnova import const  # noqa: E402
 from custom_components.koolnova.climate import KoolnovaProjectEntity  # noqa: E402
+from custom_components.koolnova.coordinator import (  # noqa: E402
+    command_was_applied,
+    payload_changes_project,
+)
 from homeassistant.components.climate import HVACMode  # noqa: E402
+
+HEAT_AIR_CODE = const.KOOLNOVA_PROJECT_MODE_CODE[(HVACMode.HEAT, "air")]
+COOL_AIR_CODE = const.KOOLNOVA_PROJECT_MODE_CODE[(HVACMode.COOL, "air")]
+STOP_KEY = const.KOOLNOVA_PROJECT_STOP_KEY
 
 
 class ProjectModeCommandTest(unittest.IsolatedAsyncioTestCase):
     """What the project sends when a running mode is requested."""
 
-    def _make_entity(self, is_stop, project_modes=None):
+    def _make_entity(self, is_stop, mode="2", project_modes=None):
         """Build the project entity over a coordinator that records payloads."""
         self.project = {
             "Topic_id": 412217,
             "Project_Name": "Casa",
             "Topic_Name": "AC Casa",
-            "Mode": "2",
-            const.KOOLNOVA_PROJECT_STOP_KEY: is_stop,
+            "Mode": mode,
+            STOP_KEY: is_stop,
             "Topic_modes": None,
             "is_online": True,
             "eco": False,
@@ -186,42 +194,25 @@ class ProjectModeCommandTest(unittest.IsolatedAsyncioTestCase):
         """Bodies actually sent to the cloud, in order."""
         return [call.args[1] for call in self.coordinator.async_update_project_data.await_args_list]
 
-    async def test_leaving_off_clears_the_flag_in_the_same_request(self):
-        """From stopped, one request carries both the mode and is_stop false."""
-        entity = self._make_entity(is_stop=True)
+    async def test_the_flag_travels_alone_when_the_mode_is_unchanged(self):
+        """Leaving off with the stored mode: the flag alone, as the app's Start does."""
+        entity = self._make_entity(is_stop=True, mode=str(HEAT_AIR_CODE))
 
         await entity.async_set_hvac_mode(HVACMode.HEAT)
 
         payloads = self._sent_payloads()
         self.assertEqual(len(payloads), 1, "the fix must stay a single request")
-        self.assertEqual(
-            payloads[0],
-            {
-                "mode": const.KOOLNOVA_PROJECT_MODE_CODE[(HVACMode.HEAT, "air")],
-                const.KOOLNOVA_PROJECT_STOP_KEY: False,
-            },
-        )
+        self.assertEqual(payloads[0], {STOP_KEY: False})
 
-    async def test_the_flag_is_sent_even_when_the_cache_still_says_running(self):
-        """The cached is_stop may be an hour old: never let it suppress the flag.
-
-        Projects are re-read only every ``project_update_frequency`` coordinator
-        cycles, so the cache can claim the installation is running while the cloud
-        has it stopped. Conditioning the flag on that cache sent ``{"mode": N}``
-        alone and the installation stayed stopped with the mode merely set.
-        """
-        entity = self._make_entity(is_stop=False)
+    async def test_the_mode_and_the_flag_travel_together_when_the_mode_changes(self):
+        """A real mode change keeps both in one request."""
+        entity = self._make_entity(is_stop=True, mode=str(COOL_AIR_CODE))
 
         await entity.async_set_hvac_mode(HVACMode.HEAT)
 
         payloads = self._sent_payloads()
-        self.assertEqual(len(payloads), 1)
-        self.assertEqual(
-            payloads[0].get(const.KOOLNOVA_PROJECT_STOP_KEY),
-            False,
-            "is_stop must be cleared regardless of what the cache believed",
-        )
-        self.assertIn("mode", payloads[0])
+        self.assertEqual(len(payloads), 1, "the fix must stay a single request")
+        self.assertEqual(payloads[0], {"mode": HEAT_AIR_CODE, STOP_KEY: False})
 
     async def test_off_sends_only_the_stop_flag(self):
         """Stopping is the flag alone: no mode code is involved."""
@@ -241,6 +232,116 @@ class ProjectModeCommandTest(unittest.IsolatedAsyncioTestCase):
         await entity.async_set_hvac_mode(HVACMode.COOL)
 
         self.assertEqual(self._sent_payloads(), [])
+
+
+class CommandApplicationTest(unittest.TestCase):
+    """Whether the cloud applied a command, decided from last_sync."""
+
+    def test_a_moved_last_sync_means_applied(self):
+        self.assertTrue(
+            command_was_applied(
+                "2026-11-23T12:08:29Z",
+                {"last_sync": "2026-11-23T12:16:19Z", "is_stop": False},
+                {"mode": "2", STOP_KEY: False},
+                {"Mode": "2", STOP_KEY: True},
+            )
+        )
+
+    def test_an_unchanged_last_sync_means_the_command_was_dropped(self):
+        """The measured case: 200, the flag echoed back, last_sync untouched."""
+        self.assertFalse(
+            command_was_applied(
+                "2026-11-23T12:08:29Z",
+                {"last_sync": "2026-11-23T12:08:29Z", "is_stop": False},
+                {"mode": "2", STOP_KEY: False},
+                {"Mode": "2", STOP_KEY: True},
+            ),
+            "a 200 with the flag echoed back is not proof of anything",
+        )
+
+    def test_nothing_to_apply_is_not_a_failure(self):
+        """A payload identical to the cached state is not expected to move last_sync."""
+        self.assertTrue(
+            command_was_applied(
+                "2026-11-23T12:08:29Z",
+                {"last_sync": "2026-11-23T12:08:29Z"},
+                {"mode": "2", STOP_KEY: False},
+                {"Mode": "2", STOP_KEY: False},
+            )
+        )
+
+    def test_a_response_without_last_sync_keeps_the_old_behaviour(self):
+        """Nothing to compare: assume applied rather than break callers."""
+        self.assertTrue(command_was_applied("whatever", {"is_stop": False}, {STOP_KEY: False}, {}))
+        self.assertTrue(command_was_applied("whatever", "not a dict", {STOP_KEY: False}, {}))
+
+    def test_payload_changes_project_tells_the_two_cases_apart(self):
+        self.assertTrue(payload_changes_project({"mode": "2"}, {"Mode": "1"}))
+        self.assertTrue(payload_changes_project({"mode": "2"}, {}))
+        self.assertTrue(payload_changes_project({STOP_KEY: False}, {STOP_KEY: True}))
+        self.assertTrue(payload_changes_project({STOP_KEY: True}, {}))
+        self.assertFalse(payload_changes_project({"mode": "2"}, {"Mode": "2"}))
+        self.assertFalse(
+            payload_changes_project(
+                {"mode": "2", STOP_KEY: False}, {"Mode": "2", STOP_KEY: False}
+            )
+        )
+
+
+class UnappliedCommandTest(unittest.IsolatedAsyncioTestCase):
+    """The entity must never report a state the installation is not running."""
+
+    async def test_a_dropped_command_is_not_believed(self):
+        """A cache the coordinator left untouched means the command was dropped."""
+        project = {
+            "Topic_id": 412217,
+            "Project_Name": "Casa",
+            "Topic_Name": "AC Casa",
+            "Mode": str(HEAT_AIR_CODE),
+            STOP_KEY: True,
+            "Topic_modes": None,
+        }
+
+        coordinator = MagicMock()
+        coordinator.last_update_success = True
+        coordinator.data = {"projects": [project], "sensors": [], "hubs": []}
+
+        async def _dropped(topic_id, payload):
+            # The coordinator refuses to refresh the cache when last_sync did not move,
+            # so the project dict above stays exactly as it was.
+            return {"last_sync": "unchanged", "is_stop": False}
+
+        coordinator.async_update_project_data = _dropped
+
+        config_entry = MagicMock()
+        config_entry.entry_id = "test_entry_id"
+        config_entry.data = {}
+        config_entry.options = {
+            const.CONF_HEAT_SOURCE: "air",
+            const.CONF_PROJECT_HVAC_MODES: ["cool", "heat", "off"],
+        }
+
+        entity = KoolnovaProjectEntity(coordinator, config_entry, project)
+        entity.hass = MagicMock()
+        entity.async_write_ha_state = MagicMock()
+
+        notified = []
+        import custom_components.koolnova.climate as climate_mod
+
+        original = climate_mod.async_create
+        climate_mod.async_create = lambda hass, message, **kwargs: notified.append(message)
+        try:
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        finally:
+            climate_mod.async_create = original
+
+        self.assertEqual(
+            project.get(STOP_KEY),
+            True,
+            "the cached state must not be replaced by what the server echoed back",
+        )
+        self.assertEqual(len(notified), 1, "the user has to be told the command was dropped")
+        self.assertIn("did not apply", notified[0])
 
 
 if __name__ == "__main__":
