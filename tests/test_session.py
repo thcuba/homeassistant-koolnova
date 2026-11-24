@@ -513,3 +513,16 @@ class RequestThrottleTest(unittest.TestCase):
 
         self.assertEqual(gate.interval, MIN_REQUEST_INTERVAL)
         self.assertEqual(gate._last_started, 1002.0)
+
+    def test_the_shipped_spacing_does_not_drop_below_the_agreed_brake(self):
+        """Un ban colpisce l'IP intero, non la singola richiesta: il freno sale, non scende.
+
+        La soglia dichiarata da Koolnova e' una richiesta ogni 30 s; 12 s e' il compromesso
+        scelto fra sicurezza dell'account e comandi multi-zona, quindi il valore spedito non
+        deve mai essere abbassato in silenzio.
+        """
+        self.assertGreaterEqual(
+            MIN_REQUEST_INTERVAL,
+            12.0,
+            "abbassare il freno sotto i 12 s puo' far bannare l'IP dell'utente",
+        )

@@ -36,9 +36,10 @@ SESSION_HEARTBEAT_INTERVAL = 2400  # 40 minutes (before token at 50 min expires)
 # "full" cycle issues 3 + N requests back to back and "set all zones" fires one PATCH per
 # zone at the same instant (asyncio.gather). update_interval only spaces whole cycles, so
 # without this every burst went out as fast as the network allowed.
-# 10 s is a deliberate compromise for now: it flattens the bursts while keeping multi-zone
-# commands tolerable (5 zones = ~40 s instead of 2 min at the 30 s ban threshold).
-MIN_REQUEST_INTERVAL = 10.0
+# 12 s is a deliberate compromise: it flattens the bursts while keeping multi-zone commands
+# tolerable (5 zones = ~48 s instead of 2.5 min at the 30 s ban threshold). A ban punishes the
+# whole IP, not a single request, so the brake errs on the slow side.
+MIN_REQUEST_INTERVAL = 12.0
 
 
 class _RequestThrottle:
